@@ -5,7 +5,7 @@ Public source for the Stendar lending protocol on Solana.
 This repository contains:
 
 - `programs/stendar/` - Anchor on-chain program
-- `sdk/` - `@stendar/sdk` TypeScript SDK (published to npm)
+- `sdk/` - `@stendar-x/sdk` TypeScript SDK (published to npm)
 - `transparency/` - inspectable platform-stats and community-data methodology
 - `security/` - collateral listing manifests and schema
 - `tests/` - protocol TypeScript regression tests

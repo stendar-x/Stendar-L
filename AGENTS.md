@@ -5,7 +5,7 @@
 This repo contains only public protocol artifacts:
 
 - `programs/stendar/` (Anchor program)
-- `sdk/` (`@stendar/sdk`)
+- `sdk/` (`@stendar-x/sdk`)
 - `transparency/` (public methodology/docs)
 - `security/` manifests
 - protocol tests and CI

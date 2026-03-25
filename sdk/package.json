@@ -1,5 +1,5 @@
 {
-  "name": "@stendar/sdk",
+  "name": "@stendar-x/sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Stendar protocol",
   "license": "MIT",

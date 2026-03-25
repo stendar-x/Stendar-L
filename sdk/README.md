@@ -1,4 +1,4 @@
-# `@stendar/sdk`
+# `@stendar-x/sdk`
 
 TypeScript SDK for interacting with the Stendar protocol in two modes:
 
@@ -8,14 +8,14 @@ TypeScript SDK for interacting with the Stendar protocol in two modes:
 ## Install
 
 ```bash
-npm install @stendar/sdk
+npm install @stendar-x/sdk
 ```
 
 ## Usage
 
 ```ts
 import { Keypair } from '@solana/web3.js';
-import { StendarClient } from '@stendar/sdk';
+import { StendarClient } from '@stendar-x/sdk';
 
 const keypair = Keypair.generate();
 
@@ -41,5 +41,5 @@ For direct mode, pass `direct` config with `connection`, `wallet`, `idl`, and op
 The SDK publishes the canonical protocol IDL as `stendarIdl`:
 
 ```ts
-import { stendarIdl } from '@stendar/sdk';
+import { stendarIdl } from '@stendar-x/sdk';
 ```
