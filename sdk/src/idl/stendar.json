@@ -1,0 +1,7240 @@
+{
+  "address": "278CdXnmeUFSmNjwbmRQmHk87fP5XqGmtshk9Jwp8VdE",
+  "metadata": {
+    "name": "stendar",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "accept_trade_offer",
+      "discriminator": [
+        47,
+        111,
+        224,
+        26,
+        202,
+        213,
+        193,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "offer",
+          "writable": true
+        },
+        {
+          "name": "trade_event",
+          "writable": true
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "seller_escrow",
+          "writable": true
+        },
+        {
+          "name": "buyer_contribution",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contribution.contract",
+                "account": "LenderContribution"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contribution.contract",
+                "account": "LenderContribution"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buyer_usdc_account",
+          "docs": [
+            "Buyer's USDC ATA for contract trades."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "seller_usdc_account",
+          "docs": [
+            "Seller's USDC ATA for contract trades."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_usdc_account",
+          "docs": [
+            "Treasury's USDC ATA for contract trade fees; validated in handler."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "add_collateral",
+      "discriminator": [
+        127,
+        82,
+        121,
+        42,
+        161,
+        176,
+        249,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "borrower_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "add_collateral_type",
+      "discriminator": [
+        236,
+        207,
+        2,
+        208,
+        108,
+        114,
+        76,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "oracle_price_feed"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "oracle_price_feed",
+          "type": "pubkey"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        },
+        {
+          "name": "liquidation_buffer_bps",
+          "type": "u16"
+        },
+        {
+          "name": "min_committed_floor_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "approve_funder",
+      "discriminator": [
+        186,
+        132,
+        238,
+        87,
+        149,
+        215,
+        253,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "approved_funder",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  112,
+                  112,
+                  114,
+                  111,
+                  118,
+                  101,
+                  100,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "lender"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "automated_interest_transfer",
+      "discriminator": [
+        162,
+        116,
+        84,
+        9,
+        231,
+        251,
+        89,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "docs": [
+            "Optional per-contract operations fund. When `None`, bot reimbursement is skipped.",
+            "This is acceptable because the bot itself controls which accounts it passes."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract's USDC ATA used for interest distributions."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "bot_processor",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "automated_principal_transfer",
+      "discriminator": [
+        245,
+        228,
+        190,
+        93,
+        87,
+        199,
+        87,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "docs": [
+            "Optional per-contract operations fund. When `None`, bot reimbursement is skipped.",
+            "This is acceptable because the bot itself controls which accounts it passes."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract's USDC ATA used for principal distributions."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "bot_processor",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "borrower_repay_recall",
+      "discriminator": [
+        214,
+        125,
+        83,
+        97,
+        120,
+        228,
+        107,
+        87
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true
+        },
+        {
+          "name": "borrower_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "escrow_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "borrower_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_clock_offset",
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "bot_refund_expired_lender",
+      "discriminator": [
+        26,
+        153,
+        173,
+        28,
+        117,
+        222,
+        16,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "lender",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bot_authority",
+          "signer": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract USDC ATA used for lender refunds."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "lender_usdc_account",
+          "docs": [
+            "Lender USDC ATA used for lender refunds."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "calculate_position_value",
+      "discriminator": [
+        94,
+        181,
+        155,
+        245,
+        115,
+        194,
+        78,
+        236
+      ],
+      "accounts": [
+        {
+          "name": "contribution"
+        },
+        {
+          "name": "contract"
+        }
+      ],
+      "args": [],
+      "returns": {
+        "defined": {
+          "name": "PositionValuation"
+        }
+      }
+    },
+    {
+      "name": "cancel_contract",
+      "discriminator": [
+        3,
+        168,
+        37,
+        73,
+        140,
+        194,
+        156,
+        165
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "docs": [
+            "Contract collateral ATA used for cancellation collateral returns."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_collateral_ata",
+          "docs": [
+            "Borrower collateral ATA used when returning non-wSOL collateral."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_term_proposal",
+      "discriminator": [
+        187,
+        223,
+        123,
+        0,
+        253,
+        217,
+        143,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_trade_listing",
+      "discriminator": [
+        85,
+        108,
+        132,
+        100,
+        97,
+        49,
+        220,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_from_escrow",
+      "discriminator": [
+        170,
+        61,
+        36,
+        124,
+        213,
+        162,
+        153,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true
+        },
+        {
+          "name": "lender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow_usdc_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "lender_usdc_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_listing",
+      "discriminator": [
+        33,
+        15,
+        192,
+        81,
+        78,
+        175,
+        159,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract loan ATA used for close-listing disbursement."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_usdc_account",
+          "docs": [
+            "Borrower loan ATA used for close-listing disbursement."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_proposal_accounts",
+      "discriminator": [
+        215,
+        21,
+        95,
+        154,
+        74,
+        7,
+        194,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer_receiver",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "close_trade_event",
+      "discriminator": [
+        125,
+        83,
+        57,
+        133,
+        252,
+        44,
+        192,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "trade_event",
+          "writable": true
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "contribute_to_contract",
+      "discriminator": [
+        203,
+        38,
+        209,
+        240,
+        212,
+        140,
+        70,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contribution",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "borrower",
+          "writable": true
+        },
+        {
+          "name": "approved_funder",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  112,
+                  112,
+                  114,
+                  111,
+                  118,
+                  101,
+                  100,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lender_usdc_account",
+          "docs": [
+            "Lender's USDC account for contributions."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract's USDC account for custody/disbursement."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_usdc_account",
+          "docs": [
+            "Borrower's USDC account used when a contract activates."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "usdc_mint",
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_debt_contract",
+      "discriminator": [
+        164,
+        203,
+        159,
+        50,
+        104,
+        124,
+        178,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  98,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  97,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "borrower"
+              },
+              {
+                "kind": "arg",
+                "path": "contract_seed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "collateral_registry",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_mint",
+          "optional": true
+        },
+        {
+          "name": "borrower_collateral_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "price_feed_account",
+          "optional": true
+        },
+        {
+          "name": "usdc_mint",
+          "optional": true
+        },
+        {
+          "name": "contract_usdc_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_usdc_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_usdc_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "optional": true,
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": [
+        {
+          "name": "contract_seed",
+          "type": "u64"
+        },
+        {
+          "name": "target_amount",
+          "type": "u64"
+        },
+        {
+          "name": "interest_rate",
+          "type": "u32"
+        },
+        {
+          "name": "term_days",
+          "type": "u32"
+        },
+        {
+          "name": "collateral_amount",
+          "type": "u64"
+        },
+        {
+          "name": "loan_type",
+          "type": {
+            "defined": {
+              "name": "LoanType"
+            }
+          }
+        },
+        {
+          "name": "ltv_ratio",
+          "type": "u64"
+        },
+        {
+          "name": "interest_payment_type",
+          "type": {
+            "defined": {
+              "name": "InterestPaymentType"
+            }
+          }
+        },
+        {
+          "name": "principal_payment_type",
+          "type": {
+            "defined": {
+              "name": "PrincipalPaymentType"
+            }
+          }
+        },
+        {
+          "name": "interest_frequency",
+          "type": {
+            "defined": {
+              "name": "PaymentFrequency"
+            }
+          }
+        },
+        {
+          "name": "principal_frequency",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "PaymentFrequency"
+              }
+            }
+          }
+        },
+        {
+          "name": "max_lenders",
+          "type": "u16"
+        },
+        {
+          "name": "partial_funding_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "allow_partial_fill",
+          "type": "bool"
+        },
+        {
+          "name": "min_partial_fill_bps",
+          "type": "u16"
+        },
+        {
+          "name": "distribution_method",
+          "type": {
+            "defined": {
+              "name": "DistributionMethod"
+            }
+          }
+        },
+        {
+          "name": "funding_access_mode",
+          "type": {
+            "defined": {
+              "name": "FundingAccessMode"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_term_proposal",
+      "discriminator": [
+        251,
+        55,
+        140,
+        43,
+        155,
+        19,
+        82,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer_vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108,
+                  95,
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
+              },
+              {
+                "kind": "account",
+                "path": "proposer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer_cooldown",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  111,
+                  108,
+                  100,
+                  111,
+                  119,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "proposer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_id",
+          "type": "u64"
+        },
+        {
+          "name": "proposed_interest_rate",
+          "type": "u32"
+        },
+        {
+          "name": "proposed_term_days",
+          "type": "u32"
+        },
+        {
+          "name": "proposed_interest_frequency",
+          "type": {
+            "defined": {
+              "name": "PaymentFrequency"
+            }
+          }
+        },
+        {
+          "name": "proposed_principal_frequency",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "PaymentFrequency"
+              }
+            }
+          }
+        },
+        {
+          "name": "proposed_interest_payment_type",
+          "type": {
+            "defined": {
+              "name": "InterestPaymentType"
+            }
+          }
+        },
+        {
+          "name": "proposed_principal_payment_type",
+          "type": {
+            "defined": {
+              "name": "PrincipalPaymentType"
+            }
+          }
+        },
+        {
+          "name": "proposed_ltv_ratio",
+          "type": "u64"
+        },
+        {
+          "name": "proposed_ltv_floor_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "create_trade_listing",
+      "discriminator": [
+        243,
+        66,
+        166,
+        4,
+        71,
+        129,
+        164,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "contribution"
+        },
+        {
+          "name": "contract"
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "listing_amount",
+          "type": "u64"
+        },
+        {
+          "name": "asking_price",
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        },
+        {
+          "name": "nonce",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "create_trade_offer",
+      "discriminator": [
+        240,
+        221,
+        182,
+        51,
+        162,
+        212,
+        114,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "writable": true
+        },
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "purchase_amount",
+          "type": "u64"
+        },
+        {
+          "name": "offered_price",
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        },
+        {
+          "name": "nonce",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "deactivate_collateral_type",
+      "discriminator": [
+        80,
+        246,
+        28,
+        218,
+        31,
+        76,
+        130,
+        9
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "distribute_to_escrows",
+      "discriminator": [
+        150,
+        243,
+        114,
+        36,
+        222,
+        34,
+        198,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "processor",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_contract",
+      "discriminator": [
+        51,
+        249,
+        38,
+        126,
+        83,
+        178,
+        182,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true
+        },
+        {
+          "name": "bot_authority",
+          "signer": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract loan ATA used for partial-fill disbursement and lender refunds."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_usdc_account",
+          "docs": [
+            "Borrower loan ATA used for partial-fill disbursement."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "docs": [
+            "Contract collateral ATA used for collateral refunds during cancellation path."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_collateral_ata",
+          "docs": [
+            "Borrower collateral ATA used for non-native collateral refunds."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_term_proposal",
+      "discriminator": [
+        129,
+        141,
+        122,
+        105,
+        111,
+        63,
+        99,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer_cooldown",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  111,
+                  108,
+                  100,
+                  111,
+                  119,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposer",
+                "account": "TermAmendmentProposal"
+              }
+            ]
+          }
+        },
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "expire_trade_listing",
+      "discriminator": [
+        234,
+        211,
+        24,
+        240,
+        46,
+        186,
+        188,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bot_authority",
+          "signer": true
+        },
+        {
+          "name": "seller",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "get_platform_stats",
+      "discriminator": [
+        7,
+        67,
+        17,
+        0,
+        4,
+        24,
+        81,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [],
+      "returns": {
+        "defined": {
+          "name": "PlatformStats"
+        }
+      }
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "SECURITY regression marker: program_data.upgrade_authority_address == Some(authority.key())"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_collateral_registry",
+      "discriminator": [
+        238,
+        29,
+        170,
+        62,
+        74,
+        210,
+        122,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_mock_oracle_price_feed",
+      "discriminator": [
+        133,
+        30,
+        85,
+        87,
+        155,
+        208,
+        67,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mock_oracle_price_feed",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  111,
+                  99,
+                  107,
+                  95,
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101,
+                  95,
+                  112,
+                  114,
+                  105,
+                  99,
+                  101,
+                  95,
+                  102,
+                  101,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "feed_seed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "feed_seed",
+          "type": "u64"
+        },
+        {
+          "name": "price",
+          "type": "i64"
+        },
+        {
+          "name": "exponent",
+          "type": "i32"
+        },
+        {
+          "name": "publish_time",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_test_clock_offset",
+      "discriminator": [
+        59,
+        196,
+        193,
+        47,
+        9,
+        228,
+        25,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_clock_offset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  111,
+                  102,
+                  102,
+                  115,
+                  101,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offset_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_treasury",
+      "discriminator": [
+        124,
+        186,
+        211,
+        195,
+        85,
+        165,
+        129,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bot_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "liquidate_contract",
+      "discriminator": [
+        180,
+        214,
+        24,
+        164,
+        209,
+        94,
+        255,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_clock_offset",
+          "optional": true
+        },
+        {
+          "name": "borrower",
+          "writable": true
+        },
+        {
+          "name": "liquidator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "collateral_registry",
+          "optional": true
+        },
+        {
+          "name": "price_feed_account",
+          "optional": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bot_usdc_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_usdc_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "bot_collateral_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "make_payment",
+      "discriminator": [
+        19,
+        128,
+        153,
+        121,
+        221,
+        192,
+        91,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "contract"
+          ]
+        },
+        {
+          "name": "borrower_usdc_account",
+          "docs": [
+            "Borrower's USDC ATA used for loan payments."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract's USDC ATA used for loan payments."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_collateral_account",
+          "docs": [
+            "Contract collateral ATA used when a contract completes."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_collateral_account",
+          "docs": [
+            "Borrower collateral ATA used when a contract completes."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "make_payment_with_distribution",
+      "discriminator": [
+        69,
+        20,
+        240,
+        232,
+        172,
+        174,
+        130,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "contract"
+          ]
+        },
+        {
+          "name": "borrower_usdc_account",
+          "docs": [
+            "Borrower's USDC ATA used for loan payments."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract's USDC ATA used for custody/distribution."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_collateral_account",
+          "docs": [
+            "Contract collateral ATA used when a contract completes."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "borrower_collateral_account",
+          "docs": [
+            "Borrower collateral ATA used when a contract completes."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "migrate_debt_contract",
+      "discriminator": [
+        164,
+        241,
+        48,
+        117,
+        132,
+        93,
+        192,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrate_platform_accounts",
+      "discriminator": [
+        66,
+        30,
+        55,
+        177,
+        24,
+        31,
+        185,
+        196
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "partial_liquidate",
+      "discriminator": [
+        224,
+        247,
+        107,
+        239,
+        225,
+        246,
+        181,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_registry"
+        },
+        {
+          "name": "price_feed_account"
+        },
+        {
+          "name": "bot_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "contract_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "bot_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "bot_authority",
+          "signer": true
+        },
+        {
+          "name": "borrower"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "repay_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "process_recall",
+      "discriminator": [
+        6,
+        202,
+        104,
+        82,
+        53,
+        190,
+        83,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "bot_authority",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true
+        },
+        {
+          "name": "bot_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "escrow_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "treasury_usdc_ata",
+          "writable": true
+        },
+        {
+          "name": "contract_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "bot_collateral_ata",
+          "writable": true
+        },
+        {
+          "name": "borrower"
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_clock_offset",
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "recall_demand_contribution",
+      "discriminator": [
+        242,
+        90,
+        136,
+        87,
+        251,
+        164,
+        5,
+        172
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "contribution",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operations_fund",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  115,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true
+        },
+        {
+          "name": "lender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_lender",
+      "discriminator": [
+        65,
+        137,
+        58,
+        230,
+        213,
+        193,
+        49,
+        41
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "lender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "contract_usdc_account",
+          "docs": [
+            "Contract USDC ATA used for lender refunds."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "lender_usdc_account",
+          "docs": [
+            "Lender USDC ATA used for lender refunds."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "request_recall",
+      "discriminator": [
+        239,
+        163,
+        211,
+        151,
+        182,
+        61,
+        155,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lender",
+          "docs": [
+            "The lender requesting recall."
+          ],
+          "signer": true
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_funder",
+      "discriminator": [
+        19,
+        63,
+        149,
+        119,
+        157,
+        214,
+        50,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "approved_funder",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  112,
+                  112,
+                  114,
+                  111,
+                  118,
+                  101,
+                  100,
+                  95,
+                  102,
+                  117,
+                  110,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "lender"
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "lender"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_mock_oracle_price_feed",
+      "discriminator": [
+        3,
+        25,
+        100,
+        130,
+        89,
+        208,
+        155,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mock_oracle_price_feed",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "i64"
+        },
+        {
+          "name": "exponent",
+          "type": "i32"
+        },
+        {
+          "name": "publish_time",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "set_test_clock_offset",
+      "discriminator": [
+        36,
+        12,
+        30,
+        167,
+        132,
+        1,
+        110,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_clock_offset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  115,
+                  116,
+                  95,
+                  99,
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  111,
+                  102,
+                  102,
+                  115,
+                  101,
+                  116
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "offset_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "toggle_pause",
+      "discriminator": [
+        238,
+        237,
+        206,
+        27,
+        255,
+        95,
+        123,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transfer_lender_position",
+      "discriminator": [
+        158,
+        79,
+        190,
+        104,
+        141,
+        232,
+        149,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "contract"
+        },
+        {
+          "name": "transfer_event",
+          "writable": true
+        },
+        {
+          "name": "contribution",
+          "writable": true
+        },
+        {
+          "name": "seller_escrow",
+          "writable": true
+        },
+        {
+          "name": "buyer_contribution",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  116,
+                  114,
+                  105,
+                  98,
+                  117,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contribution.contract",
+                "account": "LenderContribution"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyer_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contribution.contract",
+                "account": "LenderContribution"
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buyer_usdc_account",
+          "docs": [
+            "Buyer's USDC ATA for contract trades."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "seller_usdc_account",
+          "docs": [
+            "Seller's USDC ATA for contract trades."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_usdc_account",
+          "docs": [
+            "Treasury's USDC ATA for contract trade fees; validated in handler."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "transfer_amount",
+          "type": "u64"
+        },
+        {
+          "name": "sale_price",
+          "type": "u64"
+        },
+        {
+          "name": "nonce",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "update_bot_authority",
+      "discriminator": [
+        109,
+        185,
+        206,
+        131,
+        96,
+        208,
+        252,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "new_bot_authority"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_collateral_type",
+      "discriminator": [
+        5,
+        55,
+        201,
+        89,
+        84,
+        234,
+        154,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "state"
+          ]
+        },
+        {
+          "name": "state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "collateral_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  108,
+                  108,
+                  97,
+                  116,
+                  101,
+                  114,
+                  97,
+                  108,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_price_feed",
+          "optional": true
+        }
+      ],
+      "args": [
+        {
+          "name": "mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "new_oracle_price_feed",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "new_liquidation_buffer_bps",
+          "type": {
+            "option": "u16"
+          }
+        },
+        {
+          "name": "new_min_committed_floor_bps",
+          "type": {
+            "option": "u16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_contract_state",
+      "discriminator": [
+        74,
+        87,
+        190,
+        114,
+        65,
+        84,
+        79,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "processor",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_lender_escrow",
+      "discriminator": [
+        73,
+        254,
+        210,
+        174,
+        41,
+        64,
+        88,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "contribution"
+        },
+        {
+          "name": "escrow",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "processor",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_treasury_authority",
+      "discriminator": [
+        185,
+        149,
+        66,
+        195,
+        105,
+        183,
+        32,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "new_authority"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "vote_on_proposal",
+      "discriminator": [
+        188,
+        239,
+        13,
+        88,
+        119,
+        199,
+        251,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  114,
+                  109,
+                  95,
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108,
+                  95,
+                  118,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal"
+              },
+              {
+                "kind": "account",
+                "path": "voter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposer_cooldown",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  101,
+                  114,
+                  95,
+                  99,
+                  111,
+                  111,
+                  108,
+                  100,
+                  111,
+                  119,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "contract"
+              },
+              {
+                "kind": "account",
+                "path": "proposal.proposer",
+                "account": "TermAmendmentProposal"
+              }
+            ]
+          }
+        },
+        {
+          "name": "voter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_id",
+          "type": "u64"
+        },
+        {
+          "name": "vote_choice",
+          "type": {
+            "defined": {
+              "name": "VoteChoice"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_from_treasury",
+      "discriminator": [
+        0,
+        164,
+        86,
+        76,
+        56,
+        72,
+        12,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "treasury_usdc_account",
+          "docs": [
+            "Treasury USDC ATA for token-denominated withdrawals."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "recipient_usdc_account",
+          "docs": [
+            "Recipient USDC ATA for token-denominated withdrawals."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "token_program",
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ApprovedFunder",
+      "discriminator": [
+        65,
+        245,
+        200,
+        88,
+        140,
+        19,
+        148,
+        149
+      ]
+    },
+    {
+      "name": "CollateralRegistry",
+      "discriminator": [
+        248,
+        196,
+        88,
+        53,
+        72,
+        255,
+        224,
+        140
+      ]
+    },
+    {
+      "name": "ContractOperationsFund",
+      "discriminator": [
+        180,
+        231,
+        210,
+        102,
+        121,
+        230,
+        34,
+        11
+      ]
+    },
+    {
+      "name": "DebtContract",
+      "discriminator": [
+        206,
+        143,
+        113,
+        250,
+        117,
+        153,
+        119,
+        151
+      ]
+    },
+    {
+      "name": "LenderContribution",
+      "discriminator": [
+        57,
+        132,
+        160,
+        141,
+        75,
+        202,
+        27,
+        170
+      ]
+    },
+    {
+      "name": "LenderEscrow",
+      "discriminator": [
+        1,
+        232,
+        27,
+        105,
+        39,
+        171,
+        36,
+        226
+      ]
+    },
+    {
+      "name": "MockOraclePriceFeed",
+      "discriminator": [
+        60,
+        82,
+        239,
+        87,
+        146,
+        192,
+        165,
+        17
+      ]
+    },
+    {
+      "name": "ProposalVote",
+      "discriminator": [
+        65,
+        232,
+        198,
+        107,
+        71,
+        106,
+        252,
+        40
+      ]
+    },
+    {
+      "name": "ProposerCooldown",
+      "discriminator": [
+        32,
+        15,
+        211,
+        22,
+        127,
+        84,
+        161,
+        86
+      ]
+    },
+    {
+      "name": "State",
+      "discriminator": [
+        216,
+        146,
+        107,
+        94,
+        104,
+        75,
+        182,
+        177
+      ]
+    },
+    {
+      "name": "TermAmendmentProposal",
+      "discriminator": [
+        97,
+        159,
+        234,
+        207,
+        57,
+        239,
+        238,
+        196
+      ]
+    },
+    {
+      "name": "TestClockOffset",
+      "discriminator": [
+        99,
+        180,
+        110,
+        111,
+        167,
+        154,
+        161,
+        207
+      ]
+    },
+    {
+      "name": "TradeEvent",
+      "discriminator": [
+        65,
+        170,
+        183,
+        119,
+        210,
+        191,
+        44,
+        203
+      ]
+    },
+    {
+      "name": "TradeListing",
+      "discriminator": [
+        69,
+        43,
+        175,
+        151,
+        184,
+        142,
+        145,
+        85
+      ]
+    },
+    {
+      "name": "TradeOffer",
+      "discriminator": [
+        240,
+        30,
+        82,
+        234,
+        214,
+        166,
+        118,
+        200
+      ]
+    },
+    {
+      "name": "Treasury",
+      "discriminator": [
+        238,
+        239,
+        123,
+        238,
+        89,
+        1,
+        168,
+        253
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AuthorityUpdated",
+      "discriminator": [
+        133,
+        207,
+        24,
+        122,
+        14,
+        234,
+        91,
+        34
+      ]
+    },
+    {
+      "name": "ContractCreated",
+      "discriminator": [
+        80,
+        69,
+        164,
+        109,
+        77,
+        15,
+        47,
+        164
+      ]
+    },
+    {
+      "name": "ContractFunded",
+      "discriminator": [
+        86,
+        198,
+        62,
+        111,
+        156,
+        46,
+        142,
+        238
+      ]
+    },
+    {
+      "name": "ContractLiquidated",
+      "discriminator": [
+        171,
+        204,
+        107,
+        21,
+        42,
+        56,
+        165,
+        149
+      ]
+    },
+    {
+      "name": "PaymentMade",
+      "discriminator": [
+        227,
+        251,
+        123,
+        16,
+        133,
+        220,
+        83,
+        242
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ContractNotOpen",
+      "msg": "Contract is not open for contributions"
+    },
+    {
+      "code": 6001,
+      "name": "ContractNotFunded",
+      "msg": "Contract is not funded"
+    },
+    {
+      "code": 6002,
+      "name": "ContractNotCancelled",
+      "msg": "Contract is not cancelled"
+    },
+    {
+      "code": 6003,
+      "name": "ContractNotExpired",
+      "msg": "Contract listing has not expired yet"
+    },
+    {
+      "code": 6004,
+      "name": "ContractNotInDefault",
+      "msg": "Contract is not in default"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidContributionAmount",
+      "msg": "Invalid contribution amount"
+    },
+    {
+      "code": 6006,
+      "name": "MaxLendersReached",
+      "msg": "Maximum number of lenders reached for this contract"
+    },
+    {
+      "code": 6007,
+      "name": "PartialFundingDisabled",
+      "msg": "Partial funding is disabled for this contract"
+    },
+    {
+      "code": 6008,
+      "name": "PartialFillNotAllowed",
+      "msg": "Partial fill at expiry is not enabled for this contract"
+    },
+    {
+      "code": 6009,
+      "name": "BelowMinimumFillThreshold",
+      "msg": "Current funding is below the configured partial fill threshold"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidMaxLenders",
+      "msg": "Invalid max lenders value"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidPaymentAmount",
+      "msg": "Invalid payment amount"
+    },
+    {
+      "code": 6012,
+      "name": "ExceedsTargetAmount",
+      "msg": "Contribution exceeds target amount"
+    },
+    {
+      "code": 6013,
+      "name": "UnauthorizedCancellation",
+      "msg": "Unauthorized cancellation"
+    },
+    {
+      "code": 6014,
+      "name": "CannotCancelContract",
+      "msg": "Cannot cancel contract in current status"
+    },
+    {
+      "code": 6015,
+      "name": "AlreadyRefunded",
+      "msg": "Contribution already refunded"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidContribution",
+      "msg": "Invalid contribution for this contract"
+    },
+    {
+      "code": 6017,
+      "name": "ExcessivePayment",
+      "msg": "Payment exceeds amount owed"
+    },
+    {
+      "code": 6018,
+      "name": "UnauthorizedPayment",
+      "msg": "Unauthorized payment attempt"
+    },
+    {
+      "code": 6019,
+      "name": "LenderNotApproved",
+      "msg": "Lender is not approved to fund this contract"
+    },
+    {
+      "code": 6020,
+      "name": "FunderAlreadyApproved",
+      "msg": "Lender is already approved for this contract"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidApprovedFunderAccount",
+      "msg": "Approved funder account does not match the expected contract or lender"
+    },
+    {
+      "code": 6022,
+      "name": "SelfLiquidationNotAllowed",
+      "msg": "Self-liquidation not allowed"
+    },
+    {
+      "code": 6023,
+      "name": "RecallNotAllowed",
+      "msg": "Recall is only allowed for demand contracts"
+    },
+    {
+      "code": 6024,
+      "name": "NotDemandLoan",
+      "msg": "Recall is only available for demand loans"
+    },
+    {
+      "code": 6025,
+      "name": "RecallAlreadyPending",
+      "msg": "A recall is already pending for this contract"
+    },
+    {
+      "code": 6026,
+      "name": "NoRecallPending",
+      "msg": "No recall has been requested for this contract"
+    },
+    {
+      "code": 6027,
+      "name": "RecallGracePeriodNotElapsed",
+      "msg": "Recall grace period has not elapsed yet"
+    },
+    {
+      "code": 6028,
+      "name": "RecallGracePeriodElapsed",
+      "msg": "Recall grace period has elapsed"
+    },
+    {
+      "code": 6029,
+      "name": "UnauthorizedClaim",
+      "msg": "Unauthorized claim attempt"
+    },
+    {
+      "code": 6030,
+      "name": "PaymentNotRequired",
+      "msg": "Payment not required for this contract type"
+    },
+    {
+      "code": 6031,
+      "name": "NoPaymentDue",
+      "msg": "No payment due"
+    },
+    {
+      "code": 6032,
+      "name": "PaymentNotDue",
+      "msg": "Payment not due yet based on frequency"
+    },
+    {
+      "code": 6033,
+      "name": "UnauthorizedWithdrawal",
+      "msg": "Unauthorized treasury withdrawal"
+    },
+    {
+      "code": 6034,
+      "name": "InvalidWithdrawalAmount",
+      "msg": "Invalid withdrawal amount"
+    },
+    {
+      "code": 6035,
+      "name": "InsufficientTreasuryBalance",
+      "msg": "Insufficient treasury balance"
+    },
+    {
+      "code": 6036,
+      "name": "InvalidAuthority",
+      "msg": "Invalid authority provided"
+    },
+    {
+      "code": 6037,
+      "name": "UnauthorizedAuthorityUpdate",
+      "msg": "Unauthorized authority update"
+    },
+    {
+      "code": 6038,
+      "name": "UnauthorizedBotOperation",
+      "msg": "Unauthorized bot operation - only authorized bot can execute automated operations"
+    },
+    {
+      "code": 6039,
+      "name": "PlatformPaused",
+      "msg": "Platform is paused"
+    },
+    {
+      "code": 6040,
+      "name": "UnauthorizedListing",
+      "msg": "Unauthorized listing creation"
+    },
+    {
+      "code": 6041,
+      "name": "ContractNotActive",
+      "msg": "Contract is not active for trading"
+    },
+    {
+      "code": 6042,
+      "name": "InactiveListing",
+      "msg": "Trade listing is not active"
+    },
+    {
+      "code": 6043,
+      "name": "UnauthorizedAcceptance",
+      "msg": "Unauthorized acceptance of offer"
+    },
+    {
+      "code": 6044,
+      "name": "InvalidOffer",
+      "msg": "Invalid trade offer"
+    },
+    {
+      "code": 6045,
+      "name": "InactiveOffer",
+      "msg": "Trade offer is not active"
+    },
+    {
+      "code": 6046,
+      "name": "UnauthorizedTransfer",
+      "msg": "Unauthorized position transfer"
+    },
+    {
+      "code": 6047,
+      "name": "ListingAmountTooSmall",
+      "msg": "Listing amount below minimum threshold"
+    },
+    {
+      "code": 6048,
+      "name": "InvalidTradeAmount",
+      "msg": "Invalid trade amount"
+    },
+    {
+      "code": 6049,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds for trade"
+    },
+    {
+      "code": 6050,
+      "name": "TradeOfferExpired",
+      "msg": "Trade offer has expired"
+    },
+    {
+      "code": 6051,
+      "name": "TradeListingExpired",
+      "msg": "Trade listing has expired"
+    },
+    {
+      "code": 6052,
+      "name": "ListingNotExpired",
+      "msg": "Trade listing has not expired yet"
+    },
+    {
+      "code": 6053,
+      "name": "PositionNotTradeable",
+      "msg": "Cannot trade position in current contract state"
+    },
+    {
+      "code": 6054,
+      "name": "InvalidPositionValuation",
+      "msg": "Invalid position valuation"
+    },
+    {
+      "code": 6055,
+      "name": "InvalidTradePrice",
+      "msg": "Invalid trade price specified"
+    },
+    {
+      "code": 6056,
+      "name": "InvalidContractReference",
+      "msg": "Invalid contract reference"
+    },
+    {
+      "code": 6057,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow detected in calculation"
+    },
+    {
+      "code": 6058,
+      "name": "OraclePriceStale",
+      "msg": "Oracle price feed is stale"
+    },
+    {
+      "code": 6059,
+      "name": "OraclePriceNegative",
+      "msg": "Oracle returned a negative price"
+    },
+    {
+      "code": 6060,
+      "name": "OraclePriceUnavailable",
+      "msg": "Oracle price feed unavailable"
+    },
+    {
+      "code": 6061,
+      "name": "OracleCalculationOverflow",
+      "msg": "Price calculation overflow"
+    },
+    {
+      "code": 6062,
+      "name": "InvalidRecipient",
+      "msg": "Invalid recipient account"
+    },
+    {
+      "code": 6063,
+      "name": "OperationsFundInsufficient",
+      "msg": "Operations fund is insufficient to reimburse the bot"
+    },
+    {
+      "code": 6064,
+      "name": "OperationsFundInactive",
+      "msg": "Operations fund is inactive"
+    },
+    {
+      "code": 6065,
+      "name": "AccountNeedsMigration",
+      "msg": "Account must be migrated to the latest layout version"
+    },
+    {
+      "code": 6066,
+      "name": "VersionMismatch",
+      "msg": "Account version mismatch"
+    },
+    {
+      "code": 6067,
+      "name": "CollateralRegistryFull",
+      "msg": "Collateral registry has reached maximum capacity"
+    },
+    {
+      "code": 6068,
+      "name": "CollateralTypeAlreadyExists",
+      "msg": "Collateral type already exists in registry"
+    },
+    {
+      "code": 6069,
+      "name": "CollateralTypeNotFound",
+      "msg": "Collateral type not found in registry"
+    },
+    {
+      "code": 6070,
+      "name": "CollateralTypeNotApproved",
+      "msg": "Collateral type is not in the registry"
+    },
+    {
+      "code": 6071,
+      "name": "CollateralTypeInactive",
+      "msg": "Collateral type is inactive"
+    },
+    {
+      "code": 6072,
+      "name": "InsufficientCollateral",
+      "msg": "Collateral value does not meet minimum LTV + buffer requirement"
+    },
+    {
+      "code": 6073,
+      "name": "LtvFloorBelowMinimum",
+      "msg": "LTV floor is below the minimum for this collateral type"
+    },
+    {
+      "code": 6074,
+      "name": "DemandLoanFloorTooLow",
+      "msg": "Demand loan LTV floor must be at least 105%"
+    },
+    {
+      "code": 6075,
+      "name": "OraclePriceFeedMismatch",
+      "msg": "Oracle price feed does not match registry entry"
+    },
+    {
+      "code": 6076,
+      "name": "InvalidLiquidationBuffer",
+      "msg": "Liquidation buffer must be between 1 and 2000 basis points"
+    },
+    {
+      "code": 6077,
+      "name": "InvalidMinFloor",
+      "msg": "Minimum committed floor must be greater than 0"
+    },
+    {
+      "code": 6078,
+      "name": "DecimalsMismatch",
+      "msg": "Provided decimals do not match mint decimals"
+    },
+    {
+      "code": 6079,
+      "name": "MissingTokenAccounts",
+      "msg": "Required token accounts were not provided"
+    },
+    {
+      "code": 6080,
+      "name": "InvalidUsdcMint",
+      "msg": "Provided mint is not the configured USDC mint"
+    },
+    {
+      "code": 6081,
+      "name": "TokenAccountMismatch",
+      "msg": "Token account does not match expected owner or mint"
+    },
+    {
+      "code": 6082,
+      "name": "InvalidContractVersion",
+      "msg": "This operation is not supported for this contract layout"
+    },
+    {
+      "code": 6083,
+      "name": "PositionHealthy",
+      "msg": "Cannot liquidate a healthy position"
+    },
+    {
+      "code": 6084,
+      "name": "InsufficientCollateralForLiquidation",
+      "msg": "Not enough collateral to cover liquidation"
+    },
+    {
+      "code": 6085,
+      "name": "ProposalAlreadyActive",
+      "msg": "A term amendment proposal is already active for this contract"
+    },
+    {
+      "code": 6086,
+      "name": "ProposerOnCooldown",
+      "msg": "Proposer is on cooldown for this contract"
+    },
+    {
+      "code": 6087,
+      "name": "ProposalNotPending",
+      "msg": "Proposal is not pending"
+    },
+    {
+      "code": 6088,
+      "name": "ProposalExpired",
+      "msg": "Proposal has already expired"
+    },
+    {
+      "code": 6089,
+      "name": "ProposalNotExpired",
+      "msg": "Proposal has not expired yet"
+    },
+    {
+      "code": 6090,
+      "name": "AlreadyVoted",
+      "msg": "Participant has already voted on this proposal"
+    },
+    {
+      "code": 6091,
+      "name": "NotContractParticipant",
+      "msg": "Signer is not an active participant for this contract"
+    },
+    {
+      "code": 6092,
+      "name": "NoTermChanges",
+      "msg": "Proposed terms match existing contract terms"
+    },
+    {
+      "code": 6093,
+      "name": "InvalidProposedTerms",
+      "msg": "Proposed terms are invalid"
+    },
+    {
+      "code": 6094,
+      "name": "UnauthorizedProposalCancel",
+      "msg": "Only the proposal creator can cancel this proposal"
+    },
+    {
+      "code": 6095,
+      "name": "ProposerCannotVote",
+      "msg": "Proposer vote is auto-recorded and cannot be cast again"
+    },
+    {
+      "code": 6096,
+      "name": "MissingContributionAccounts",
+      "msg": "Missing contribution accounts needed to build proposal participants"
+    },
+    {
+      "code": 6097,
+      "name": "InvalidProposalId",
+      "msg": "Proposal ID does not match the expected next value"
+    },
+    {
+      "code": 6098,
+      "name": "InvalidProposalParticipants",
+      "msg": "Invalid proposal participant snapshot"
+    }
+  ],
+  "types": [
+    {
+      "name": "ApprovedFunder",
+      "docs": [
+        "Borrower-authorized lender for a specific contract."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "lender",
+            "type": "pubkey"
+          },
+          {
+            "name": "approved_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralRegistry",
+      "docs": [
+        "Registry of approved collateral assets for standard cross-collateral contracts."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Must match State.authority; validated at instruction time by validate_registry_authority."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "num_collateral_types",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_types",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "CollateralType"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralType",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_price_feed",
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "liquidation_buffer_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_committed_floor_bps",
+            "type": "u16"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "lender",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractLiquidated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractOperationsFund",
+      "docs": [
+        "Per-contract operations fund account.",
+        "",
+        "Borrowers fund this PDA at contract creation to cover the off-chain bot's",
+        "expected transaction fees for automated interest/principal transfers."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_funded",
+            "type": "u64"
+          },
+          {
+            "name": "total_reimbursed",
+            "type": "u64"
+          },
+          {
+            "name": "estimated_operations",
+            "type": "u32"
+          },
+          {
+            "name": "completed_operations",
+            "type": "u32"
+          },
+          {
+            "name": "max_lenders",
+            "type": "u16"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractStatus",
+      "docs": [
+        "Contract status tracking the lifecycle of a debt contract"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "OpenNotFunded"
+          },
+          {
+            "name": "OpenPartiallyFunded"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "PendingRecall"
+          },
+          {
+            "name": "Completed"
+          },
+          {
+            "name": "Cancelled"
+          },
+          {
+            "name": "Liquidated"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DebtContract",
+      "docs": [
+        "Individual debt contract account",
+        "",
+        "Represents a single lending contract between borrowers and lenders.",
+        "Contains all terms, status, and financial tracking for the loan."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "contract_seed",
+            "type": "u64"
+          },
+          {
+            "name": "target_amount",
+            "type": "u64"
+          },
+          {
+            "name": "funded_amount",
+            "type": "u64"
+          },
+          {
+            "name": "interest_rate",
+            "type": "u32"
+          },
+          {
+            "name": "term_days",
+            "type": "u32"
+          },
+          {
+            "name": "collateral_amount",
+            "type": "u64"
+          },
+          {
+            "name": "loan_type",
+            "type": {
+              "defined": {
+                "name": "LoanType"
+              }
+            }
+          },
+          {
+            "name": "ltv_ratio",
+            "type": "u64"
+          },
+          {
+            "name": "interest_payment_type",
+            "type": {
+              "defined": {
+                "name": "InterestPaymentType"
+              }
+            }
+          },
+          {
+            "name": "principal_payment_type",
+            "type": {
+              "defined": {
+                "name": "PrincipalPaymentType"
+              }
+            }
+          },
+          {
+            "name": "interest_frequency",
+            "type": {
+              "defined": {
+                "name": "PaymentFrequency"
+              }
+            }
+          },
+          {
+            "name": "principal_frequency",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PaymentFrequency"
+                }
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ContractStatus"
+              }
+            }
+          },
+          {
+            "name": "num_contributions",
+            "type": "u32"
+          },
+          {
+            "name": "outstanding_balance",
+            "type": "u64"
+          },
+          {
+            "name": "accrued_interest",
+            "type": "u64"
+          },
+          {
+            "name": "last_interest_update",
+            "type": "i64"
+          },
+          {
+            "name": "last_principal_payment",
+            "type": "i64"
+          },
+          {
+            "name": "total_principal_paid",
+            "type": "u64"
+          },
+          {
+            "name": "contributions",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "last_bot_update",
+            "type": "i64"
+          },
+          {
+            "name": "next_interest_payment_due",
+            "type": "i64"
+          },
+          {
+            "name": "next_principal_payment_due",
+            "type": "i64"
+          },
+          {
+            "name": "bot_operation_count",
+            "type": "u64"
+          },
+          {
+            "name": "max_lenders",
+            "docs": [
+              "Borrower-defined cap on the number of lenders allowed to contribute."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "partial_funding_flag",
+            "docs": [
+              "Flag for whether multi-lender partial funding is enabled."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "docs": [
+              "Unix timestamp when this listing expires (0 when expiry is not configured)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "allow_partial_fill",
+            "docs": [
+              "Whether the borrower allows partial fill activation when listing expires."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "min_partial_fill_bps",
+            "docs": [
+              "Minimum fill threshold (basis points) required to activate partial funding."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "listing_fee_paid",
+            "docs": [
+              "Listing fee charged at creation (tracked for expiry refunds)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "_reserved",
+            "docs": [
+              "Reserved space for additive schema changes without realloc."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                44
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "docs": [
+              "Version for account layout compatibility."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "contract_version",
+            "type": "u8"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_value_at_creation",
+            "type": "u64"
+          },
+          {
+            "name": "ltv_floor_bps",
+            "type": "u16"
+          },
+          {
+            "name": "loan_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "loan_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "recall_requested",
+            "type": "bool"
+          },
+          {
+            "name": "recall_requested_at",
+            "type": "i64"
+          },
+          {
+            "name": "recall_requested_by",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DistributionMethod",
+      "docs": [
+        "How lender distributions are handled for a contract"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Manual"
+          },
+          {
+            "name": "Automatic"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundingAccessMode",
+      "docs": [
+        "Controls who is allowed to fund a contract while it is open."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Public"
+          },
+          {
+            "name": "AllowlistOnly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InterestPaymentType",
+      "docs": [
+        "Interest payment type enumeration"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "OutstandingBalance"
+          },
+          {
+            "name": "CollateralTransfer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LenderContribution",
+      "docs": [
+        "Lender contribution tracking account"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lender",
+            "type": "pubkey"
+          },
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "contribution_amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_interest_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "total_principal_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "last_claim_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "is_refunded",
+            "type": "bool"
+          },
+          {
+            "name": "refunded",
+            "docs": [
+              "Deprecated: use `is_refunded` instead"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LenderEscrow",
+      "docs": [
+        "Lender escrow account for payment distribution"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lender",
+            "type": "pubkey"
+          },
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow_amount",
+            "type": "u64"
+          },
+          {
+            "name": "available_interest",
+            "type": "u64"
+          },
+          {
+            "name": "available_principal",
+            "type": "u64"
+          },
+          {
+            "name": "total_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "is_released",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "escrow_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingType",
+      "docs": [
+        "Listing type enumeration"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "FullPosition"
+          },
+          {
+            "name": "PartialPosition"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanType",
+      "docs": [
+        "Loan type enumeration"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Demand"
+          },
+          {
+            "name": "Committed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MockOraclePriceFeed",
+      "docs": [
+        "Program-owned mock oracle used by local integration tests.",
+        "",
+        "This account is authority-gated and only accepted by the oracle parser when",
+        "the feed account owner is this program id."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "feed_seed",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "i64"
+          },
+          {
+            "name": "exponent",
+            "type": "i32"
+          },
+          {
+            "name": "publish_time",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentFrequency",
+      "docs": [
+        "Payment frequency for interest and principal payments"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Daily"
+          },
+          {
+            "name": "Weekly"
+          },
+          {
+            "name": "BiWeekly"
+          },
+          {
+            "name": "Monthly"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentMade",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlatformStats",
+      "docs": [
+        "Platform statistics return type"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "total_contracts",
+            "type": "u64"
+          },
+          {
+            "name": "total_debt",
+            "type": "u64"
+          },
+          {
+            "name": "total_collateral",
+            "type": "u64"
+          },
+          {
+            "name": "total_interest_paid",
+            "type": "u64"
+          },
+          {
+            "name": "total_liquidations",
+            "type": "u64"
+          },
+          {
+            "name": "platform_fee_basis_points",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionValuation",
+      "docs": [
+        "Position valuation result"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fair_value",
+            "docs": [
+              "Current fair value estimate"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "remaining_interest",
+            "docs": [
+              "Remaining interest to be earned"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "remaining_principal",
+            "docs": [
+              "Remaining principal to be repaid"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "risk_adjustment",
+            "docs": [
+              "Risk adjustment factor (basis points)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "days_remaining",
+            "docs": [
+              "Days remaining in contract"
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrincipalPaymentType",
+      "docs": [
+        "Principal payment type enumeration"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "CollateralDeduction"
+          },
+          {
+            "name": "NoFixedPayment"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalStatus",
+      "docs": [
+        "Proposal status for loan term amendments."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Approved"
+          },
+          {
+            "name": "Rejected"
+          },
+          {
+            "name": "Expired"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalVote",
+      "docs": [
+        "A single immutable vote record for a proposal participant."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proposal",
+            "type": "pubkey"
+          },
+          {
+            "name": "voter",
+            "type": "pubkey"
+          },
+          {
+            "name": "vote",
+            "type": {
+              "defined": {
+                "name": "VoteChoice"
+              }
+            }
+          },
+          {
+            "name": "voted_at",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposerCooldown",
+      "docs": [
+        "Cooldown state per proposer per contract to rate-limit failed proposals."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "cooldown_until",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "State",
+      "docs": [
+        "Global platform state account",
+        "",
+        "Stores platform-wide statistics and configuration settings.",
+        "This account is created once during platform initialization."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_debt",
+            "type": "u64"
+          },
+          {
+            "name": "total_collateral",
+            "type": "u64"
+          },
+          {
+            "name": "total_interest_paid",
+            "type": "u64"
+          },
+          {
+            "name": "total_liquidations",
+            "type": "u64"
+          },
+          {
+            "name": "total_contracts",
+            "type": "u64"
+          },
+          {
+            "name": "platform_fee_basis_points",
+            "type": "u16"
+          },
+          {
+            "name": "is_paused",
+            "type": "bool"
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TermAmendmentProposal",
+      "docs": [
+        "A snapshot proposal to amend mutable terms on an existing debt contract."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal_id",
+            "type": "u64"
+          },
+          {
+            "name": "proposed_interest_rate",
+            "type": "u32"
+          },
+          {
+            "name": "proposed_term_days",
+            "type": "u32"
+          },
+          {
+            "name": "proposed_interest_frequency",
+            "type": {
+              "defined": {
+                "name": "PaymentFrequency"
+              }
+            }
+          },
+          {
+            "name": "proposed_principal_frequency",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "PaymentFrequency"
+                }
+              }
+            }
+          },
+          {
+            "name": "proposed_interest_payment_type",
+            "type": {
+              "defined": {
+                "name": "InterestPaymentType"
+              }
+            }
+          },
+          {
+            "name": "proposed_principal_payment_type",
+            "type": {
+              "defined": {
+                "name": "PrincipalPaymentType"
+              }
+            }
+          },
+          {
+            "name": "proposed_ltv_ratio",
+            "type": "u64"
+          },
+          {
+            "name": "proposed_ltv_floor_bps",
+            "type": "u16"
+          },
+          {
+            "name": "participant_keys",
+            "docs": [
+              "Snapshot of wallets required to vote when the proposal is created."
+            ],
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "total_participants",
+            "type": "u8"
+          },
+          {
+            "name": "approvals",
+            "type": "u8"
+          },
+          {
+            "name": "rejections",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ProposalStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "resolved_at",
+            "type": "i64"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TestClockOffset",
+      "docs": [
+        "Test-only clock offset account used to deterministically exercise long time gates.",
+        "",
+        "The offset is authority-gated and optional in instructions; production flows can",
+        "ignore it by omitting the account."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "offset_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeEvent",
+      "docs": [
+        "Trade event for logging completed trades",
+        "",
+        "Records all successful trades for analytics and history.",
+        "Immutable record of secondary market activity."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "docs": [
+              "Contract the trade was for"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "contribution",
+            "docs": [
+              "Original contribution account"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "docs": [
+              "Seller's wallet address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "buyer",
+            "docs": [
+              "Buyer's wallet address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_traded",
+            "docs": [
+              "Amount traded"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "sale_price",
+            "docs": [
+              "Final sale price"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "platform_fee",
+            "docs": [
+              "Platform fee collected"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "trade_type",
+            "docs": [
+              "Type of trade executed"
+            ],
+            "type": {
+              "defined": {
+                "name": "TradeType"
+              }
+            }
+          },
+          {
+            "name": "timestamp",
+            "docs": [
+              "When the trade was executed"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Event nonce for PDA derivation"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeListing",
+      "docs": [
+        "Trade listing account for secondary market",
+        "",
+        "Represents a lender's position listed for sale in the secondary market.",
+        "MVP mode currently supports full-position listings only."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "docs": [
+              "Contract this listing is for"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "docs": [
+              "Seller's wallet address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "contribution",
+            "docs": [
+              "Original contribution account being sold"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "listing_amount",
+            "docs": [
+              "Amount being listed for sale (must be full position in MVP mode)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "asking_price",
+            "docs": [
+              "Asking price for the listing"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "listing_type",
+            "docs": [
+              "Whether this is a full or partial position sale.",
+              "MVP mode enforces `FullPosition`."
+            ],
+            "type": {
+              "defined": {
+                "name": "ListingType"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "When this listing was created"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "docs": [
+              "When this listing expires (unix timestamp, required)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether this listing is currently active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "offer_count",
+            "docs": [
+              "Number of offers received on this listing"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "highest_offer",
+            "docs": [
+              "Highest offer received (for display purposes)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Listing nonce for PDA derivation"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeOffer",
+      "docs": [
+        "Trade offer account for counter-offers",
+        "",
+        "Represents a buyer's offer on a trade listing.",
+        "Allows for negotiation between buyer and seller."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "listing",
+            "docs": [
+              "The trade listing this offer is for"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "buyer",
+            "docs": [
+              "Buyer's wallet address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "purchase_amount",
+            "docs": [
+              "Amount buyer wants to purchase"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "offered_price",
+            "docs": [
+              "Offered price for the purchase"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "When this offer was created"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "docs": [
+              "When this offer expires"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether this offer is still active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Offer nonce for PDA derivation"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeType",
+      "docs": [
+        "Trade type enumeration"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "DirectSale"
+          },
+          {
+            "name": "AcceptedOffer"
+          },
+          {
+            "name": "PartialFill"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treasury",
+      "docs": [
+        "Treasury account for automated operations and fee collection"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bot_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "fees_collected",
+            "type": "u64"
+          },
+          {
+            "name": "transaction_costs",
+            "type": "u64"
+          },
+          {
+            "name": "automated_operations",
+            "type": "u64"
+          },
+          {
+            "name": "total_contracts_processed",
+            "type": "u64"
+          },
+          {
+            "name": "last_update",
+            "type": "i64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "usdc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_usdc_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_liquidation_fees",
+            "type": "u64"
+          },
+          {
+            "name": "total_recall_fees",
+            "type": "u64"
+          },
+          {
+            "name": "account_version",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteChoice",
+      "docs": [
+        "Vote choice for term amendment proposals."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Approve"
+          },
+          {
+            "name": "Reject"
+          }
+        ]
+      }
+    }
+  ]
+}

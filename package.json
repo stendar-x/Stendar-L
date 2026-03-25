@@ -1,0 +1,32 @@
+{
+  "name": "stendar-protocol",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts",
+    "test:regression": "npx ts-mocha -p ./tsconfig.json -t 120000 tests/trading.ts tests/integration_trading.ts",
+    "idl:check": "node ./scripts/check-idl-sync.js",
+    "audit:gate": "node ./scripts/audit-gate.js",
+    "collateral:validate": "ts-node ./scripts/validate-collateral-listing.ts --manifest ./security/collateral-listings/devnet.json",
+    "collateral:apply:dry-run": "ts-node ./scripts/apply-collateral-manifest.ts --manifest ./security/collateral-listings/devnet.json",
+    "collateral:apply:execute": "ts-node ./scripts/apply-collateral-manifest.ts --manifest ./security/collateral-listings/devnet.json --execute",
+    "collateral:gate": "./scripts/pre-mainnet-listing-gate.sh",
+    "sdk:build": "npm --prefix sdk run build",
+    "sdk:test": "npm --prefix sdk test",
+    "sdk:publish": "npm --prefix sdk publish"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "0.31.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.2.3",
+    "axios": "^1.13.5",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "ts-mocha": "^11.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

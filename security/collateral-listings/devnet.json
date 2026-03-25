@@ -1,0 +1,18 @@
+{
+  "$schema": "./schema.json",
+  "manifestVersion": 1,
+  "environment": "devnet",
+  "updatedAt": "2026-03-22T22:21:40.426Z",
+  "notes": "Mock oracle (seed=1) replacing stale Pyth devnet feed.",
+  "assets": [
+    {
+      "symbol": "WSOL",
+      "mint": "So11111111111111111111111111111111111111112",
+      "oraclePriceFeed": "HoxSSbAryqoVVDNQfSLfE1URj71h5L2XykCuid1anx9a",
+      "decimals": 9,
+      "liquidationBufferBps": 325,
+      "minCommittedFloorBps": 10750,
+      "isActive": true
+    }
+  ]
+}

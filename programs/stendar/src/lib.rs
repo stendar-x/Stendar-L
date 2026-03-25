@@ -1,0 +1,408 @@
+#![allow(unexpected_cfgs)]
+
+use anchor_lang::prelude::*;
+
+// Import modules
+mod contexts;
+mod errors;
+mod instructions;
+mod state;
+mod utils;
+
+// Re-export for external use
+pub use contexts::*;
+pub use errors::*;
+pub use instructions::trading::{validate_listing_parameters, validate_offer_parameters};
+pub use state::*;
+
+declare_id!("278CdXnmeUFSmNjwbmRQmHk87fP5XqGmtshk9Jwp8VdE");
+
+#[program]
+pub mod stendar {
+    use super::*;
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        instructions::initialize_state(ctx)
+    }
+
+    pub fn initialize_treasury(
+        ctx: Context<InitializeTreasury>,
+        bot_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_treasury(ctx, bot_authority)
+    }
+
+    pub fn migrate_platform_accounts<'info>(
+        ctx: Context<'_, '_, '_, 'info, MigratePlatformAccounts<'info>>,
+    ) -> Result<()> {
+        instructions::migrate_platform_accounts(ctx)
+    }
+
+    pub fn update_treasury_authority(ctx: Context<UpdateTreasuryAuthority>) -> Result<()> {
+        instructions::update_treasury_authority(ctx)
+    }
+
+    pub fn update_bot_authority(ctx: Context<UpdateBotAuthority>) -> Result<()> {
+        instructions::update_bot_authority(ctx)
+    }
+
+    pub fn toggle_pause(ctx: Context<TogglePause>) -> Result<()> {
+        instructions::toggle_pause(ctx)
+    }
+
+    pub fn initialize_collateral_registry(
+        ctx: Context<InitializeCollateralRegistry>,
+    ) -> Result<()> {
+        instructions::initialize_collateral_registry(ctx)
+    }
+
+    pub fn add_collateral_type(
+        ctx: Context<AddCollateralType>,
+        oracle_price_feed: Pubkey,
+        decimals: u8,
+        liquidation_buffer_bps: u16,
+        min_committed_floor_bps: u16,
+    ) -> Result<()> {
+        instructions::add_collateral_type(
+            ctx,
+            oracle_price_feed,
+            decimals,
+            liquidation_buffer_bps,
+            min_committed_floor_bps,
+        )
+    }
+
+    pub fn update_collateral_type(
+        ctx: Context<UpdateCollateralType>,
+        mint: Pubkey,
+        new_oracle_price_feed: Option<Pubkey>,
+        new_liquidation_buffer_bps: Option<u16>,
+        new_min_committed_floor_bps: Option<u16>,
+    ) -> Result<()> {
+        instructions::update_collateral_type(
+            ctx,
+            mint,
+            new_oracle_price_feed,
+            new_liquidation_buffer_bps,
+            new_min_committed_floor_bps,
+        )
+    }
+
+    pub fn deactivate_collateral_type(
+        ctx: Context<DeactivateCollateralType>,
+        mint: Pubkey,
+    ) -> Result<()> {
+        instructions::deactivate_collateral_type(ctx, mint)
+    }
+
+    pub fn initialize_mock_oracle_price_feed(
+        ctx: Context<InitializeMockOraclePriceFeed>,
+        feed_seed: u64,
+        price: i64,
+        exponent: i32,
+        publish_time: i64,
+    ) -> Result<()> {
+        instructions::initialize_mock_oracle_price_feed(ctx, feed_seed, price, exponent, publish_time)
+    }
+
+    pub fn set_mock_oracle_price_feed(
+        ctx: Context<SetMockOraclePriceFeed>,
+        price: i64,
+        exponent: i32,
+        publish_time: i64,
+    ) -> Result<()> {
+        instructions::set_mock_oracle_price_feed(ctx, price, exponent, publish_time)
+    }
+
+    pub fn initialize_test_clock_offset(
+        ctx: Context<InitializeTestClockOffset>,
+        offset_seconds: i64,
+    ) -> Result<()> {
+        instructions::initialize_test_clock_offset(ctx, offset_seconds)
+    }
+
+    pub fn set_test_clock_offset(
+        ctx: Context<SetTestClockOffset>,
+        offset_seconds: i64,
+    ) -> Result<()> {
+        instructions::set_test_clock_offset(ctx, offset_seconds)
+    }
+
+    pub fn create_debt_contract(
+        ctx: Context<CreateDebtContract>,
+        contract_seed: u64,
+        target_amount: u64,
+        interest_rate: u32,
+        term_days: u32,
+        collateral_amount: u64,
+        loan_type: LoanType,
+        ltv_ratio: u64,
+        interest_payment_type: InterestPaymentType,
+        principal_payment_type: PrincipalPaymentType,
+        interest_frequency: PaymentFrequency,
+        principal_frequency: Option<PaymentFrequency>,
+        max_lenders: u16,
+        partial_funding_enabled: bool,
+        allow_partial_fill: bool,
+        min_partial_fill_bps: u16,
+        distribution_method: DistributionMethod,
+        funding_access_mode: FundingAccessMode,
+    ) -> Result<()> {
+        instructions::create_debt_contract(
+            ctx,
+            contract_seed,
+            target_amount,
+            interest_rate,
+            term_days,
+            collateral_amount,
+            loan_type,
+            ltv_ratio,
+            interest_payment_type,
+            principal_payment_type,
+            interest_frequency,
+            principal_frequency,
+            max_lenders,
+            partial_funding_enabled,
+            allow_partial_fill,
+            min_partial_fill_bps,
+            distribution_method,
+            funding_access_mode,
+        )
+    }
+
+    pub fn approve_funder(ctx: Context<ApproveFunder>) -> Result<()> {
+        instructions::approve_funder(ctx)
+    }
+
+    pub fn revoke_funder(ctx: Context<RevokeFunder>) -> Result<()> {
+        instructions::revoke_funder(ctx)
+    }
+
+    pub fn contribute_to_contract(ctx: Context<ContributeToContract>, amount: u64) -> Result<()> {
+        instructions::contribute_to_contract(ctx, amount)
+    }
+
+    pub fn add_collateral(ctx: Context<AddCollateral>, amount: u64) -> Result<()> {
+        instructions::add_collateral(ctx, amount)
+    }
+
+    pub fn update_contract_state(ctx: Context<UpdateContractState>) -> Result<()> {
+        instructions::update_contract_state(ctx)
+    }
+
+    pub fn distribute_to_escrows(ctx: Context<DistributeToEscrows>) -> Result<()> {
+        instructions::distribute_to_escrows(ctx)
+    }
+
+    pub fn claim_from_escrow(ctx: Context<ClaimFromEscrow>) -> Result<()> {
+        instructions::claim_from_escrow(ctx)
+    }
+
+    pub fn update_lender_escrow(ctx: Context<UpdateLenderEscrow>) -> Result<()> {
+        instructions::update_lender_escrow(ctx)
+    }
+
+    pub fn cancel_contract(ctx: Context<CancelContract>) -> Result<()> {
+        instructions::cancel_contract(ctx)
+    }
+
+    pub fn expire_contract(ctx: Context<ExpireContract>) -> Result<()> {
+        instructions::expire_contract(ctx)
+    }
+
+    pub fn close_listing(ctx: Context<CloseListing>) -> Result<()> {
+        instructions::close_listing(ctx)
+    }
+
+    pub fn migrate_debt_contract<'info>(
+        ctx: Context<'_, '_, '_, 'info, MigrateDebtContract<'info>>,
+    ) -> Result<()> {
+        instructions::migrate_debt_contract(ctx)
+    }
+
+    pub fn refund_lender<'info>(
+        ctx: Context<'_, '_, '_, 'info, RefundLender<'info>>,
+    ) -> Result<()> {
+        instructions::refund_lender(ctx)
+    }
+
+    pub fn bot_refund_expired_lender<'info>(
+        ctx: Context<'_, '_, '_, 'info, BotRefundExpiredLender<'info>>,
+    ) -> Result<()> {
+        instructions::bot_refund_expired_lender(ctx)
+    }
+
+    pub fn liquidate_contract<'info>(
+        ctx: Context<'_, '_, '_, 'info, LiquidateContract<'info>>,
+    ) -> Result<()> {
+        instructions::liquidate_contract(ctx)
+    }
+
+    pub fn partial_liquidate<'info>(
+        ctx: Context<'_, '_, 'info, 'info, PartialLiquidate<'info>>,
+        repay_amount: u64,
+    ) -> Result<()> {
+        instructions::partial_liquidate(ctx, repay_amount)
+    }
+
+    pub fn recall_demand_contribution(ctx: Context<RecallDemandContribution>) -> Result<()> {
+        instructions::recall_demand_contribution(ctx)
+    }
+
+    pub fn request_recall(ctx: Context<RequestRecall>) -> Result<()> {
+        instructions::request_recall(ctx)
+    }
+
+    pub fn borrower_repay_recall(ctx: Context<BorrowerRepayRecall>) -> Result<()> {
+        instructions::borrower_repay_recall(ctx)
+    }
+
+    pub fn process_recall(ctx: Context<ProcessRecall>) -> Result<()> {
+        instructions::process_recall(ctx)
+    }
+
+    pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
+        instructions::make_payment(ctx, amount)
+    }
+
+    pub fn make_payment_with_distribution<'info>(
+        ctx: Context<'_, '_, '_, 'info, MakePaymentWithDistribution<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::make_payment_with_distribution(ctx, amount)
+    }
+
+    pub fn create_term_proposal(
+        ctx: Context<CreateTermProposal>,
+        proposal_id: u64,
+        proposed_interest_rate: u32,
+        proposed_term_days: u32,
+        proposed_interest_frequency: PaymentFrequency,
+        proposed_principal_frequency: Option<PaymentFrequency>,
+        proposed_interest_payment_type: InterestPaymentType,
+        proposed_principal_payment_type: PrincipalPaymentType,
+        proposed_ltv_ratio: u64,
+        proposed_ltv_floor_bps: u16,
+    ) -> Result<()> {
+        instructions::create_term_proposal(
+            ctx,
+            proposal_id,
+            proposed_interest_rate,
+            proposed_term_days,
+            proposed_interest_frequency,
+            proposed_principal_frequency,
+            proposed_interest_payment_type,
+            proposed_principal_payment_type,
+            proposed_ltv_ratio,
+            proposed_ltv_floor_bps,
+        )
+    }
+
+    pub fn vote_on_proposal(
+        ctx: Context<VoteOnProposal>,
+        proposal_id: u64,
+        vote_choice: VoteChoice,
+    ) -> Result<()> {
+        instructions::vote_on_proposal(ctx, proposal_id, vote_choice)
+    }
+
+    pub fn cancel_term_proposal(
+        ctx: Context<CancelTermProposal>,
+        proposal_id: u64,
+    ) -> Result<()> {
+        instructions::cancel_term_proposal(ctx, proposal_id)
+    }
+
+    pub fn expire_term_proposal(
+        ctx: Context<ExpireTermProposal>,
+        proposal_id: u64,
+    ) -> Result<()> {
+        instructions::expire_term_proposal(ctx, proposal_id)
+    }
+
+    pub fn close_proposal_accounts(
+        ctx: Context<CloseProposalAccounts>,
+        proposal_id: u64,
+    ) -> Result<()> {
+        instructions::close_proposal_accounts(ctx, proposal_id)
+    }
+
+    pub fn get_platform_stats(ctx: Context<GetPlatformStats>) -> Result<PlatformStats> {
+        instructions::get_platform_stats(ctx)
+    }
+
+    pub fn automated_interest_transfer<'info>(
+        ctx: Context<'_, '_, '_, 'info, AutomatedInterestTransfer<'info>>,
+    ) -> Result<()> {
+        instructions::automated_interest_transfer(ctx)
+    }
+
+    pub fn automated_principal_transfer<'info>(
+        ctx: Context<'_, '_, '_, 'info, AutomatedPrincipalTransfer<'info>>,
+    ) -> Result<()> {
+        instructions::automated_principal_transfer(ctx)
+    }
+
+    pub fn withdraw_from_treasury(ctx: Context<WithdrawFromTreasury>, amount: u64) -> Result<()> {
+        instructions::withdraw_from_treasury(ctx, amount)
+    }
+
+    // Trading instruction handlers for secondary market
+
+    pub fn create_trade_listing(
+        ctx: Context<CreateTradeListing>,
+        listing_amount: u64,
+        asking_price: u64,
+        expires_at: i64,
+        nonce: u8,
+    ) -> Result<()> {
+        instructions::create_trade_listing(ctx, listing_amount, asking_price, expires_at, nonce)
+    }
+
+    pub fn create_trade_offer(
+        ctx: Context<CreateTradeOffer>,
+        purchase_amount: u64,
+        offered_price: u64,
+        expires_at: i64,
+        nonce: u8,
+    ) -> Result<()> {
+        instructions::create_trade_offer(ctx, purchase_amount, offered_price, expires_at, nonce)
+    }
+
+    pub fn accept_trade_offer(ctx: Context<AcceptTradeOffer>, nonce: u8) -> Result<()> {
+        instructions::accept_trade_offer(ctx, nonce)
+    }
+
+    pub fn cancel_trade_listing(ctx: Context<CancelTradeListing>) -> Result<()> {
+        instructions::cancel_trade_listing(ctx)
+    }
+
+    pub fn expire_trade_listing(ctx: Context<ExpireTradeListing>) -> Result<()> {
+        instructions::expire_trade_listing(ctx)
+    }
+
+    pub fn close_trade_event(ctx: Context<CloseTradeEvent>) -> Result<()> {
+        instructions::close_trade_event(ctx)
+    }
+
+    pub fn transfer_lender_position(
+        ctx: Context<TransferLenderPosition>,
+        transfer_amount: u64,
+        sale_price: u64,
+        nonce: u8,
+    ) -> Result<()> {
+        instructions::transfer_lender_position(ctx, transfer_amount, sale_price, nonce)
+    }
+
+    pub fn calculate_position_value(
+        ctx: Context<CalculatePositionValue>,
+    ) -> Result<PositionValuation> {
+        let current_time = Clock::get()?.unix_timestamp;
+        instructions::calculate_position_value(
+            &ctx.accounts.contribution,
+            &ctx.accounts.contract,
+            current_time,
+        )
+    }
+
+}

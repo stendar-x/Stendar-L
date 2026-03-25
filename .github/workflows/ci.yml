@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  audit-gate:
+    name: Audit Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install SDK dependencies
+        run: npm ci --prefix sdk
+
+      - name: Enforce audit allowlist
+        run: npm run audit:gate
+
+  sdk-tests:
+    name: SDK Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install SDK dependencies
+        run: npm ci --prefix sdk
+
+      - name: Build and test SDK
+        run: npm --prefix sdk test
+
+  protocol-regressions:
+    name: Protocol Regressions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run protocol PDA regression tests
+        run: npx ts-mocha -p ./tsconfig.json -t 120000 tests/trading.ts tests/integration_trading.ts
+
+  rust-tests:
+    name: Rust Program Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run cargo tests
+        run: cargo test --manifest-path programs/stendar/Cargo.toml
