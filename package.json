@@ -7,10 +7,6 @@
     "test:regression": "npx ts-mocha -p ./tsconfig.json -t 120000 tests/trading.ts tests/integration_trading.ts",
     "idl:check": "node ./scripts/check-idl-sync.js",
     "audit:gate": "node ./scripts/audit-gate.js",
-    "collateral:validate": "ts-node ./scripts/validate-collateral-listing.ts --manifest ./security/collateral-listings/devnet.json",
-    "collateral:apply:dry-run": "ts-node ./scripts/apply-collateral-manifest.ts --manifest ./security/collateral-listings/devnet.json",
-    "collateral:apply:execute": "ts-node ./scripts/apply-collateral-manifest.ts --manifest ./security/collateral-listings/devnet.json --execute",
-    "collateral:gate": "./scripts/pre-mainnet-listing-gate.sh",
     "sdk:build": "npm --prefix sdk run build",
     "sdk:test": "npm --prefix sdk test",
     "sdk:publish": "npm --prefix sdk publish"

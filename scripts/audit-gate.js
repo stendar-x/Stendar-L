@@ -19,26 +19,7 @@ const ALLOWLIST_BY_WORKSPACE = {
   sdk: new Set(),
 };
 
-const ALLOWLIST_REASON = {
-  'bn.js': 'Transitively required by Solana ecosystem packages; awaiting upstream fix rollout.',
-  minimatch: 'Transitive in build/tooling chains (node-gyp/react-native test toolchain), not direct app runtime logic.',
-  glob: 'Inherited via minimatch-dependent toolchain packages.',
-  rimraf: 'Inherited via tooling dependencies.',
-  '@npmcli/move-file': 'Inherited via sqlite3 install chain.',
-  cacache: 'Inherited via sqlite3 install chain.',
-  'make-fetch-happen': 'Inherited via sqlite3 install chain.',
-  'node-gyp': 'Inherited via sqlite3 install chain.',
-  sqlite3: 'Current backend persistence dependency; upgrade path tracked separately.',
-  '@jest/transform': 'Frontend test-only toolchain transitive dependency.',
-  '@react-native/codegen': 'Transitive from wallet adapter ecosystem packages.',
-  '@react-native/community-cli-plugin': 'Transitive from wallet adapter ecosystem packages.',
-  '@react-native/dev-middleware': 'Transitive from wallet adapter ecosystem packages.',
-  'babel-jest': 'Frontend test-only transitive dependency.',
-  'babel-plugin-istanbul': 'Coverage/test toolchain transitive dependency.',
-  'chromium-edge-launcher': 'Transitive tooling dependency.',
-  'react-native': 'Transitive dependency from wallet adapter ecosystem packages.',
-  'test-exclude': 'Coverage/test toolchain transitive dependency.',
-};
+const ALLOWLIST_REASON = {};
 
 function parseAuditJson(workspaceName, cwd) {
   let stdout = '';
