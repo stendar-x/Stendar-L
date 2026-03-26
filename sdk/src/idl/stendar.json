@@ -5226,461 +5226,466 @@
     },
     {
       "code": 6007,
+      "name": "LastLenderMustFillRemaining",
+      "msg": "Last lender slot must contribute the exact remaining amount to reach the target"
+    },
+    {
+      "code": 6008,
       "name": "PartialFundingDisabled",
       "msg": "Partial funding is disabled for this contract"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "PartialFillNotAllowed",
       "msg": "Partial fill at expiry is not enabled for this contract"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "BelowMinimumFillThreshold",
       "msg": "Current funding is below the configured partial fill threshold"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "InvalidMaxLenders",
       "msg": "Invalid max lenders value"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "InvalidPaymentAmount",
       "msg": "Invalid payment amount"
     },
     {
-      "code": 6012,
+      "code": 6013,
       "name": "ExceedsTargetAmount",
       "msg": "Contribution exceeds target amount"
     },
     {
-      "code": 6013,
+      "code": 6014,
       "name": "UnauthorizedCancellation",
       "msg": "Unauthorized cancellation"
     },
     {
-      "code": 6014,
+      "code": 6015,
       "name": "CannotCancelContract",
       "msg": "Cannot cancel contract in current status"
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "AlreadyRefunded",
       "msg": "Contribution already refunded"
     },
     {
-      "code": 6016,
+      "code": 6017,
       "name": "InvalidContribution",
       "msg": "Invalid contribution for this contract"
     },
     {
-      "code": 6017,
+      "code": 6018,
       "name": "ExcessivePayment",
       "msg": "Payment exceeds amount owed"
     },
     {
-      "code": 6018,
+      "code": 6019,
       "name": "UnauthorizedPayment",
       "msg": "Unauthorized payment attempt"
     },
     {
-      "code": 6019,
+      "code": 6020,
       "name": "LenderNotApproved",
       "msg": "Lender is not approved to fund this contract"
     },
     {
-      "code": 6020,
+      "code": 6021,
       "name": "FunderAlreadyApproved",
       "msg": "Lender is already approved for this contract"
     },
     {
-      "code": 6021,
+      "code": 6022,
       "name": "InvalidApprovedFunderAccount",
       "msg": "Approved funder account does not match the expected contract or lender"
     },
     {
-      "code": 6022,
+      "code": 6023,
       "name": "SelfLiquidationNotAllowed",
       "msg": "Self-liquidation not allowed"
     },
     {
-      "code": 6023,
+      "code": 6024,
       "name": "RecallNotAllowed",
       "msg": "Recall is only allowed for demand contracts"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "NotDemandLoan",
       "msg": "Recall is only available for demand loans"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "RecallAlreadyPending",
       "msg": "A recall is already pending for this contract"
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "NoRecallPending",
       "msg": "No recall has been requested for this contract"
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "RecallGracePeriodNotElapsed",
       "msg": "Recall grace period has not elapsed yet"
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "RecallGracePeriodElapsed",
       "msg": "Recall grace period has elapsed"
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "UnauthorizedClaim",
       "msg": "Unauthorized claim attempt"
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "PaymentNotRequired",
       "msg": "Payment not required for this contract type"
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "NoPaymentDue",
       "msg": "No payment due"
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "PaymentNotDue",
       "msg": "Payment not due yet based on frequency"
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "UnauthorizedWithdrawal",
       "msg": "Unauthorized treasury withdrawal"
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "InvalidWithdrawalAmount",
       "msg": "Invalid withdrawal amount"
     },
     {
-      "code": 6035,
+      "code": 6036,
       "name": "InsufficientTreasuryBalance",
       "msg": "Insufficient treasury balance"
     },
     {
-      "code": 6036,
+      "code": 6037,
       "name": "InvalidAuthority",
       "msg": "Invalid authority provided"
     },
     {
-      "code": 6037,
+      "code": 6038,
       "name": "UnauthorizedAuthorityUpdate",
       "msg": "Unauthorized authority update"
     },
     {
-      "code": 6038,
+      "code": 6039,
       "name": "UnauthorizedBotOperation",
       "msg": "Unauthorized bot operation - only authorized bot can execute automated operations"
     },
     {
-      "code": 6039,
+      "code": 6040,
       "name": "PlatformPaused",
       "msg": "Platform is paused"
     },
     {
-      "code": 6040,
+      "code": 6041,
       "name": "UnauthorizedListing",
       "msg": "Unauthorized listing creation"
     },
     {
-      "code": 6041,
+      "code": 6042,
       "name": "ContractNotActive",
       "msg": "Contract is not active for trading"
     },
     {
-      "code": 6042,
+      "code": 6043,
       "name": "InactiveListing",
       "msg": "Trade listing is not active"
     },
     {
-      "code": 6043,
+      "code": 6044,
       "name": "UnauthorizedAcceptance",
       "msg": "Unauthorized acceptance of offer"
     },
     {
-      "code": 6044,
+      "code": 6045,
       "name": "InvalidOffer",
       "msg": "Invalid trade offer"
     },
     {
-      "code": 6045,
+      "code": 6046,
       "name": "InactiveOffer",
       "msg": "Trade offer is not active"
     },
     {
-      "code": 6046,
+      "code": 6047,
       "name": "UnauthorizedTransfer",
       "msg": "Unauthorized position transfer"
     },
     {
-      "code": 6047,
+      "code": 6048,
       "name": "ListingAmountTooSmall",
       "msg": "Listing amount below minimum threshold"
     },
     {
-      "code": 6048,
+      "code": 6049,
       "name": "InvalidTradeAmount",
       "msg": "Invalid trade amount"
     },
     {
-      "code": 6049,
+      "code": 6050,
       "name": "InsufficientFunds",
       "msg": "Insufficient funds for trade"
     },
     {
-      "code": 6050,
+      "code": 6051,
       "name": "TradeOfferExpired",
       "msg": "Trade offer has expired"
     },
     {
-      "code": 6051,
+      "code": 6052,
       "name": "TradeListingExpired",
       "msg": "Trade listing has expired"
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "ListingNotExpired",
       "msg": "Trade listing has not expired yet"
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "PositionNotTradeable",
       "msg": "Cannot trade position in current contract state"
     },
     {
-      "code": 6054,
+      "code": 6055,
       "name": "InvalidPositionValuation",
       "msg": "Invalid position valuation"
     },
     {
-      "code": 6055,
+      "code": 6056,
       "name": "InvalidTradePrice",
       "msg": "Invalid trade price specified"
     },
     {
-      "code": 6056,
+      "code": 6057,
       "name": "InvalidContractReference",
       "msg": "Invalid contract reference"
     },
     {
-      "code": 6057,
+      "code": 6058,
       "name": "ArithmeticOverflow",
       "msg": "Arithmetic overflow detected in calculation"
     },
     {
-      "code": 6058,
+      "code": 6059,
       "name": "OraclePriceStale",
       "msg": "Oracle price feed is stale"
     },
     {
-      "code": 6059,
+      "code": 6060,
       "name": "OraclePriceNegative",
       "msg": "Oracle returned a negative price"
     },
     {
-      "code": 6060,
+      "code": 6061,
       "name": "OraclePriceUnavailable",
       "msg": "Oracle price feed unavailable"
     },
     {
-      "code": 6061,
+      "code": 6062,
       "name": "OracleCalculationOverflow",
       "msg": "Price calculation overflow"
     },
     {
-      "code": 6062,
+      "code": 6063,
       "name": "InvalidRecipient",
       "msg": "Invalid recipient account"
     },
     {
-      "code": 6063,
+      "code": 6064,
       "name": "OperationsFundInsufficient",
       "msg": "Operations fund is insufficient to reimburse the bot"
     },
     {
-      "code": 6064,
+      "code": 6065,
       "name": "OperationsFundInactive",
       "msg": "Operations fund is inactive"
     },
     {
-      "code": 6065,
+      "code": 6066,
       "name": "AccountNeedsMigration",
       "msg": "Account must be migrated to the latest layout version"
     },
     {
-      "code": 6066,
+      "code": 6067,
       "name": "VersionMismatch",
       "msg": "Account version mismatch"
     },
     {
-      "code": 6067,
+      "code": 6068,
       "name": "CollateralRegistryFull",
       "msg": "Collateral registry has reached maximum capacity"
     },
     {
-      "code": 6068,
+      "code": 6069,
       "name": "CollateralTypeAlreadyExists",
       "msg": "Collateral type already exists in registry"
     },
     {
-      "code": 6069,
+      "code": 6070,
       "name": "CollateralTypeNotFound",
       "msg": "Collateral type not found in registry"
     },
     {
-      "code": 6070,
+      "code": 6071,
       "name": "CollateralTypeNotApproved",
       "msg": "Collateral type is not in the registry"
     },
     {
-      "code": 6071,
+      "code": 6072,
       "name": "CollateralTypeInactive",
       "msg": "Collateral type is inactive"
     },
     {
-      "code": 6072,
+      "code": 6073,
       "name": "InsufficientCollateral",
       "msg": "Collateral value does not meet minimum LTV + buffer requirement"
     },
     {
-      "code": 6073,
+      "code": 6074,
       "name": "LtvFloorBelowMinimum",
       "msg": "LTV floor is below the minimum for this collateral type"
     },
     {
-      "code": 6074,
+      "code": 6075,
       "name": "DemandLoanFloorTooLow",
       "msg": "Demand loan LTV floor must be at least 105%"
     },
     {
-      "code": 6075,
+      "code": 6076,
       "name": "OraclePriceFeedMismatch",
       "msg": "Oracle price feed does not match registry entry"
     },
     {
-      "code": 6076,
+      "code": 6077,
       "name": "InvalidLiquidationBuffer",
       "msg": "Liquidation buffer must be between 1 and 2000 basis points"
     },
     {
-      "code": 6077,
+      "code": 6078,
       "name": "InvalidMinFloor",
       "msg": "Minimum committed floor must be greater than 0"
     },
     {
-      "code": 6078,
+      "code": 6079,
       "name": "DecimalsMismatch",
       "msg": "Provided decimals do not match mint decimals"
     },
     {
-      "code": 6079,
+      "code": 6080,
       "name": "MissingTokenAccounts",
       "msg": "Required token accounts were not provided"
     },
     {
-      "code": 6080,
+      "code": 6081,
       "name": "InvalidUsdcMint",
       "msg": "Provided mint is not the configured USDC mint"
     },
     {
-      "code": 6081,
+      "code": 6082,
       "name": "TokenAccountMismatch",
       "msg": "Token account does not match expected owner or mint"
     },
     {
-      "code": 6082,
+      "code": 6083,
       "name": "InvalidContractVersion",
       "msg": "This operation is not supported for this contract layout"
     },
     {
-      "code": 6083,
+      "code": 6084,
       "name": "PositionHealthy",
       "msg": "Cannot liquidate a healthy position"
     },
     {
-      "code": 6084,
+      "code": 6085,
       "name": "InsufficientCollateralForLiquidation",
       "msg": "Not enough collateral to cover liquidation"
     },
     {
-      "code": 6085,
+      "code": 6086,
       "name": "ProposalAlreadyActive",
       "msg": "A term amendment proposal is already active for this contract"
     },
     {
-      "code": 6086,
+      "code": 6087,
       "name": "ProposerOnCooldown",
       "msg": "Proposer is on cooldown for this contract"
     },
     {
-      "code": 6087,
+      "code": 6088,
       "name": "ProposalNotPending",
       "msg": "Proposal is not pending"
     },
     {
-      "code": 6088,
+      "code": 6089,
       "name": "ProposalExpired",
       "msg": "Proposal has already expired"
     },
     {
-      "code": 6089,
+      "code": 6090,
       "name": "ProposalNotExpired",
       "msg": "Proposal has not expired yet"
     },
     {
-      "code": 6090,
+      "code": 6091,
       "name": "AlreadyVoted",
       "msg": "Participant has already voted on this proposal"
     },
     {
-      "code": 6091,
+      "code": 6092,
       "name": "NotContractParticipant",
       "msg": "Signer is not an active participant for this contract"
     },
     {
-      "code": 6092,
+      "code": 6093,
       "name": "NoTermChanges",
       "msg": "Proposed terms match existing contract terms"
     },
     {
-      "code": 6093,
+      "code": 6094,
       "name": "InvalidProposedTerms",
       "msg": "Proposed terms are invalid"
     },
     {
-      "code": 6094,
+      "code": 6095,
       "name": "UnauthorizedProposalCancel",
       "msg": "Only the proposal creator can cancel this proposal"
     },
     {
-      "code": 6095,
+      "code": 6096,
       "name": "ProposerCannotVote",
       "msg": "Proposer vote is auto-recorded and cannot be cast again"
     },
     {
-      "code": 6096,
+      "code": 6097,
       "name": "MissingContributionAccounts",
       "msg": "Missing contribution accounts needed to build proposal participants"
     },
     {
-      "code": 6097,
+      "code": 6098,
       "name": "InvalidProposalId",
       "msg": "Proposal ID does not match the expected next value"
     },
     {
-      "code": 6098,
+      "code": 6099,
       "name": "InvalidProposalParticipants",
       "msg": "Invalid proposal participant snapshot"
     }
@@ -6276,13 +6281,6 @@
           },
           {
             "name": "is_refunded",
-            "type": "bool"
-          },
-          {
-            "name": "refunded",
-            "docs": [
-              "Deprecated: use `is_refunded` instead"
-            ],
             "type": "bool"
           },
           {
