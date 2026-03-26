@@ -162,7 +162,6 @@ pub fn get_platform_stats(ctx: Context<GetPlatformStats>) -> Result<PlatformStat
 pub fn initialize_treasury(ctx: Context<InitializeTreasury>, bot_authority: Pubkey) -> Result<()> {
     require_current_version(ctx.accounts.state.account_version)?;
     let treasury = &mut ctx.accounts.treasury;
-    require_current_version(ctx.accounts.state.account_version)?;
     require!(
         bot_authority != Pubkey::default(),
         StendarError::InvalidAuthority

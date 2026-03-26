@@ -739,10 +739,10 @@ mod tests {
 
     #[test]
     fn lender_contribution_len_after_field_consolidation() {
-        // After removing duplicate `amount` (u64=8) and `refunded` (bool=1):
         // 8 discriminator + 32 lender + 32 contract + 8 contribution_amount +
         // 8 total_interest_claimed + 8 total_principal_claimed + 8 last_claim_timestamp +
-        // 1 is_refunded + 8 created_at + 32 _reserved + 2 account_version
+        // 1 is_refunded + 1 refunded (deprecated, kept for layout compat) +
+        // 8 created_at + 32 _reserved + 2 account_version
         let expected: usize = 8 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 8 + LENDER_CONTRIBUTION_RESERVED_BYTES + 2;
         assert_eq!(LenderContribution::LEN, expected);
 

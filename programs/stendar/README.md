@@ -53,8 +53,10 @@ The smart contract is organized into logical modules for maintainability and cla
 - **Complex Logic**: Payment distribution to multiple lenders
 
 #### `src/instructions/admin_operations.rs`
-- **Platform Management**: treasury initialization, statistics, authority updates
-- **Administrative Functions**: automation and treasury control flows
+- **Account Versioning**: `migrate_platform_accounts` (bumps `account_version` on State/Treasury PDAs after program upgrades)
+- **Treasury Management**: initialization, authority updates, withdrawals
+- **Automated Operations**: bot-authorized interest and principal transfers to lenders
+- **Platform Controls**: pause toggle, aggregate statistics
 
 #### `src/instructions/trading.rs`
 - **Secondary Position Trading**: listing creation, offer creation/acceptance, listing cancellation
@@ -155,8 +157,4 @@ anchor deploy --provider.cluster devnet
 
 ## Contributing
 
-1. Follow Rust best practices and Anchor conventions
-2. Maintain the modular structure with files under 300 lines
-3. Add comprehensive tests for new functionality
-4. Document all public interfaces and complex logic
-5. Ensure security audits before mainnet deployment 
+See the repository root [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for the full contribution workflow including PR requirements, required tests, and IDL coupling rules.
