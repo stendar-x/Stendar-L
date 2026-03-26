@@ -218,7 +218,6 @@ mod tests {
             total_principal_claimed: 0,
             last_claim_timestamp: 0,
             is_refunded: false,
-            refunded: false,
             created_at: 1_700_000_000,
             _reserved: [0u8; LENDER_CONTRIBUTION_RESERVED_BYTES],
             account_version: CURRENT_ACCOUNT_VERSION,
