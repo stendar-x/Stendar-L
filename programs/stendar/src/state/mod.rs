@@ -332,8 +332,6 @@ pub struct LenderContribution {
     pub total_principal_claimed: u64,
     pub last_claim_timestamp: i64,
     pub is_refunded: bool,
-    /// Deprecated: use `is_refunded` instead
-    pub refunded: bool,
     pub created_at: i64,
     pub _reserved: [u8; LENDER_CONTRIBUTION_RESERVED_BYTES],
     pub account_version: u16,
@@ -341,7 +339,7 @@ pub struct LenderContribution {
 
 impl LenderContribution {
     pub const LEN: usize =
-        8 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 8 + LENDER_CONTRIBUTION_RESERVED_BYTES + 2;
+        8 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 8 + LENDER_CONTRIBUTION_RESERVED_BYTES + 2;
 }
 
 /// Lender escrow account for payment distribution
@@ -741,22 +739,19 @@ mod tests {
     fn lender_contribution_len_after_field_consolidation() {
         // 8 discriminator + 32 lender + 32 contract + 8 contribution_amount +
         // 8 total_interest_claimed + 8 total_principal_claimed + 8 last_claim_timestamp +
-        // 1 is_refunded + 1 refunded (deprecated, kept for layout compat) +
-        // 8 created_at + 32 _reserved + 2 account_version
-        let expected: usize = 8 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 8 + LENDER_CONTRIBUTION_RESERVED_BYTES + 2;
+        // 1 is_refunded + 8 created_at + 32 _reserved + 2 account_version
+        let expected: usize = 8 + 32 + 32 + 8 + 8 + 8 + 8 + 1 + 8 + LENDER_CONTRIBUTION_RESERVED_BYTES + 2;
         assert_eq!(LenderContribution::LEN, expected);
 
         let sample = LenderContribution {
             lender: Pubkey::default(),
             contract: Pubkey::default(),
             contribution_amount: 100,
-            
             total_interest_claimed: 0,
             total_principal_claimed: 0,
             last_claim_timestamp: 0,
             is_refunded: false,
             created_at: 12345,
-            refunded: false,
             _reserved: [0u8; LENDER_CONTRIBUTION_RESERVED_BYTES],
             account_version: CURRENT_ACCOUNT_VERSION,
         };
