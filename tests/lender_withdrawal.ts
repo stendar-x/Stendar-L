@@ -354,6 +354,7 @@ describe("Lender withdrawal from open contracts", () => {
         toBn(collateralRaw),
         { committed: {} },
         new anchor.BN(11_000),
+        11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },

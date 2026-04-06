@@ -318,6 +318,7 @@ describe("Term proposal consensus", () => {
         collateralAmount,
         loanType === "demand" ? { demand: {} } : { committed: {} },
         new anchor.BN(11_000),
+        11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },
@@ -456,6 +457,7 @@ describe("Term proposal consensus", () => {
         collateralAmount,
         { demand: {} },
         new anchor.BN(11_000),
+        11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },
@@ -1417,7 +1419,7 @@ describe("Term proposal consensus", () => {
     );
 
     try {
-      await setTestClockOffset(172_900);
+      await setTestClockOffset(259_300);
       await program.methods
         .processProposalRecall(new anchor.BN(1))
         .accountsPartial({
@@ -1598,7 +1600,7 @@ describe("Term proposal consensus", () => {
     );
 
     try {
-      await setTestClockOffset(172_900);
+      await setTestClockOffset(259_300);
       await program.methods
         .processProposalRecall(new anchor.BN(1))
         .accountsPartial({

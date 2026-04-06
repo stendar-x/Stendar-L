@@ -555,6 +555,7 @@ describe("Pool auto-expiration", () => {
         toBn(6_000_000_000n),
         { demand: {} },
         toBn(11_000),
+        11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },

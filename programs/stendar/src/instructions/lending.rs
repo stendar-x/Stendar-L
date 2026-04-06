@@ -404,6 +404,7 @@ pub fn create_debt_contract(
     collateral_amount: u64,
     loan_type: LoanType,
     ltv_ratio: u64,
+    ltv_floor_bps: u16,
     interest_payment_type: InterestPaymentType,
     principal_payment_type: PrincipalPaymentType,
     interest_frequency: PaymentFrequency,
@@ -424,14 +425,36 @@ pub fn create_debt_contract(
     require!(interest_rate > 0, StendarError::InvalidInterestRate);
     require!(interest_rate <= 10000, StendarError::InvalidInterestRate);
     require!(term_days <= 3650, StendarError::InvalidPaymentAmount);
+    require!(ltv_ratio <= 100_000, StendarError::InvalidPaymentAmount);
+    require!(ltv_floor_bps <= 65_500, StendarError::InvalidPaymentAmount);
     require!(
-        collateral_amount > 0,
-        StendarError::InvalidContributionAmount
-    );
-    require!(
-        ltv_ratio >= 1000 && ltv_ratio <= 20000,
+        (ltv_floor_bps as u64) <= ltv_ratio,
         StendarError::InvalidPaymentAmount
     );
+    if ltv_ratio == 0 {
+        require!(
+            collateral_amount == 0,
+            StendarError::InvalidContributionAmount
+        );
+        require!(
+            interest_payment_type != InterestPaymentType::CollateralTransfer,
+            StendarError::InvalidPaymentAmount
+        );
+        require!(
+            principal_payment_type != PrincipalPaymentType::CollateralDeduction,
+            StendarError::InvalidPaymentAmount
+        );
+    } else {
+        require!(
+            collateral_amount > 0,
+            StendarError::InvalidContributionAmount
+        );
+        if interest_payment_type == InterestPaymentType::CollateralTransfer
+            || principal_payment_type == PrincipalPaymentType::CollateralDeduction
+        {
+            require!(ltv_ratio >= 1_000, StendarError::InvalidPaymentAmount);
+        }
+    }
     require!(
         max_lenders > 0 && max_lenders <= MAX_LENDERS_PER_TX,
         StendarError::InvalidMaxLenders
@@ -476,31 +499,28 @@ pub fn create_debt_contract(
     require_current_version(state.account_version)?;
     require_current_version(treasury.account_version)?;
 
-    let _collateral_registry = ctx
-        .accounts
-        .collateral_registry
-        .as_ref()
-        .ok_or(StendarError::MissingTokenAccounts)?;
-    let _collateral_mint = ctx
-        .accounts
-        .collateral_mint
-        .as_ref()
-        .ok_or(StendarError::MissingTokenAccounts)?;
-    let _borrower_collateral_ata = ctx
-        .accounts
-        .borrower_collateral_ata
-        .as_ref()
-        .ok_or(StendarError::MissingTokenAccounts)?;
-    let _contract_collateral_ata = ctx
-        .accounts
-        .contract_collateral_ata
-        .as_ref()
-        .ok_or(StendarError::MissingTokenAccounts)?;
-    let _price_feed_account = ctx
-        .accounts
-        .price_feed_account
-        .as_ref()
-        .ok_or(StendarError::MissingTokenAccounts)?;
+    if ltv_ratio > 0 {
+        ctx.accounts
+            .collateral_registry
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        ctx.accounts
+            .collateral_mint
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        ctx.accounts
+            .borrower_collateral_ata
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        ctx.accounts
+            .contract_collateral_ata
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        ctx.accounts
+            .price_feed_account
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+    }
     let usdc_mint = ctx
         .accounts
         .usdc_mint
@@ -622,7 +642,7 @@ pub fn create_debt_contract(
     contract.collateral_mint = Pubkey::default();
     contract.collateral_token_account = Pubkey::default();
     contract.collateral_value_at_creation = 0;
-    contract.ltv_floor_bps = 0;
+    contract.ltv_floor_bps = ltv_floor_bps;
     contract.loan_mint = Pubkey::default();
     contract.loan_token_account = Pubkey::default();
     contract.recall_requested = false;
@@ -641,7 +661,7 @@ pub fn create_debt_contract(
         .checked_add(target_amount)
         .ok_or(StendarError::ArithmeticOverflow)?;
 
-    {
+    if ltv_ratio > 0 {
         let collateral_registry = ctx
             .accounts
             .collateral_registry
@@ -695,18 +715,18 @@ pub fn create_debt_contract(
             StendarError::OraclePriceFeedMismatch
         );
 
-        let ltv_floor_bps =
-            u16::try_from(ltv_ratio).map_err(|_| error!(StendarError::InvalidPaymentAmount))?;
-        if loan_type == LoanType::Demand {
-            require!(
-                ltv_floor_bps >= DEMAND_LOAN_MIN_FLOOR_BPS,
-                StendarError::DemandLoanFloorTooLow
-            );
-        } else {
-            require!(
-                ltv_floor_bps >= collateral_type.min_committed_floor_bps,
-                StendarError::LtvFloorBelowMinimum
-            );
+        if ltv_floor_bps > 0 {
+            if loan_type == LoanType::Demand {
+                require!(
+                    ltv_floor_bps >= DEMAND_LOAN_MIN_FLOOR_BPS,
+                    StendarError::DemandLoanFloorTooLow
+                );
+            } else {
+                require!(
+                    ltv_floor_bps >= collateral_type.min_committed_floor_bps,
+                    StendarError::LtvFloorBelowMinimum
+                );
+            }
         }
 
         require!(
@@ -744,14 +764,16 @@ pub fn create_debt_contract(
             price,
             exponent,
         )?;
-        let current_ltv_bps = calculate_ltv_bps(collateral_value_at_creation, target_amount)?;
-        let min_required_ltv_bps = ltv_floor_bps
-            .checked_add(collateral_type.liquidation_buffer_bps)
-            .ok_or(StendarError::ArithmeticOverflow)?;
-        require!(
-            current_ltv_bps >= min_required_ltv_bps as u32,
-            StendarError::InsufficientCollateral
-        );
+        if ltv_floor_bps > 0 {
+            let current_ltv_bps = calculate_ltv_bps(collateral_value_at_creation, target_amount)?;
+            let min_required_ltv_bps = ltv_floor_bps
+                .checked_add(collateral_type.liquidation_buffer_bps)
+                .ok_or(StendarError::ArithmeticOverflow)?;
+            require!(
+                current_ltv_bps >= min_required_ltv_bps as u32,
+                StendarError::InsufficientCollateral
+            );
+        }
 
         token::transfer(
             CpiContext::new(
@@ -769,7 +791,6 @@ pub fn create_debt_contract(
         contract.collateral_mint = collateral_mint.key();
         contract.collateral_token_account = contract_collateral_ata.key();
         contract.collateral_value_at_creation = collateral_value_at_creation;
-        contract.ltv_floor_bps = ltv_floor_bps;
         contract.loan_mint = usdc_mint.key();
         contract.loan_token_account = contract_usdc_ata.key();
 
@@ -1554,7 +1575,7 @@ fn liquidate_contract_standard<'info>(
         price,
         exponent,
     )?;
-    let is_price_triggered = if outstanding_balance == 0 {
+    let is_price_triggered = if outstanding_balance == 0 || ltv_floor_bps == 0 {
         false
     } else {
         let collateral_side = (collateral_value_usdc as u128)
