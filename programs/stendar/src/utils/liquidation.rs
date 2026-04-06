@@ -15,6 +15,10 @@ pub fn check_health(
     ltv_floor_bps: u16,
     liquidation_buffer_bps: u16,
 ) -> HealthStatus {
+    if ltv_floor_bps == 0 {
+        return HealthStatus::Healthy;
+    }
+
     let partial_threshold = ltv_floor_bps.saturating_add(liquidation_buffer_bps);
 
     if current_ltv_bps <= ltv_floor_bps as u32 {
@@ -94,6 +98,12 @@ mod tests {
     #[test]
     fn check_health_returns_healthy_above_partial_threshold() {
         assert_eq!(check_health(10_501, 10_000, 500), HealthStatus::Healthy);
+    }
+
+    #[test]
+    fn check_health_returns_healthy_when_floor_is_zero() {
+        assert_eq!(check_health(0, 0, 500), HealthStatus::Healthy);
+        assert_eq!(check_health(250, 0, 500), HealthStatus::Healthy);
     }
 
     #[test]

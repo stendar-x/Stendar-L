@@ -589,6 +589,7 @@ describe("Stream 12 testing audit", () => {
         toBn(selectedCollateralAmount),
         params.loanType === "demand" ? { demand: {} } : { committed: {} },
         new anchor.BN(effectiveFloorBps),
+        effectiveFloorBps,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },
@@ -1259,6 +1260,7 @@ describe("Stream 12 testing audit", () => {
           toBn(10n ** 8n),
           { committed: {} },
           new anchor.BN(11_000),
+          11_000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -1344,6 +1346,7 @@ describe("Stream 12 testing audit", () => {
           toBn(10n ** BigInt(approved.decimals)),
           { committed: {} },
           new anchor.BN(11_000),
+          11_000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -1467,6 +1470,7 @@ describe("Stream 12 testing audit", () => {
           toBn(collateralAmount),
           { committed: {} },
           new anchor.BN(Math.max(collateralType.minCommittedFloorBps, 11_000)),
+          Math.max(collateralType.minCommittedFloorBps, 11_000),
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -1580,6 +1584,7 @@ describe("Stream 12 testing audit", () => {
           toBn(10n ** BigInt(activeType.decimals)),
           { demand: {} },
           new anchor.BN(10_000),
+          10_000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -1705,6 +1710,7 @@ describe("Stream 12 testing audit", () => {
           toBn(collateralAmount),
           { committed: {} },
           new anchor.BN(floorBelowMinimum),
+          floorBelowMinimum,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -1939,6 +1945,7 @@ describe("Stream 12 testing audit", () => {
           new anchor.BN(30_000_000),
           { committed: {} },
           new anchor.BN(8_000),
+          8_000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -2502,6 +2509,7 @@ describe("Stream 12 testing audit", () => {
           new anchor.BN(25_000_000),
           { committed: {} },
           new anchor.BN(8_000),
+          8_000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -3289,7 +3297,7 @@ describe("Stream 12 testing audit", () => {
       700_000_000n,
     );
     const treasuryBefore = (await program.account.treasury.fetch(treasuryPda)) as any;
-    await setTestClockOffset(172_900);
+    await setTestClockOffset(259_300);
     try {
       try {
         await program.methods
@@ -3415,7 +3423,7 @@ describe("Stream 12 testing audit", () => {
       provider.wallet.publicKey,
       400_000_000n,
     );
-    await setTestClockOffset(172_900);
+    await setTestClockOffset(259_300);
     try {
       await program.methods
         .processRecall()
@@ -3490,7 +3498,7 @@ describe("Stream 12 testing audit", () => {
       })
       .signers([lender.lender])
       .rpc();
-    await setTestClockOffset(172_900);
+    await setTestClockOffset(259_300);
     try {
       await program.methods
         .borrowerRepayRecall()
@@ -3710,7 +3718,7 @@ describe("Stream 12 testing audit", () => {
 
     const treasuryUsdcBefore = await getAccount(connection, fixture.treasuryUsdcAta);
 
-    await setTestClockOffset(172_900);
+    await setTestClockOffset(259_300);
     try {
       await program.methods
         .processRecall()
@@ -3793,7 +3801,7 @@ describe("Stream 12 testing audit", () => {
       lenderA.amount,
     );
 
-    await setTestClockOffset(172_900);
+    await setTestClockOffset(259_300);
     try {
       await program.methods
         .processRecall()
@@ -4215,6 +4223,7 @@ describe("Stream 12 testing audit", () => {
           new anchor.BN(55_000_000),
           { committed: {} },
           new anchor.BN(8_000),
+          8_000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -4278,6 +4287,7 @@ describe("Stream 12 testing audit", () => {
           new anchor.BN(50_000_000),
           { committed: {} },
           new anchor.BN(8000),
+          8000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },
@@ -4341,6 +4351,7 @@ describe("Stream 12 testing audit", () => {
           new anchor.BN(24_000_000),
           { demand: {} },
           new anchor.BN(8000),
+          8000,
           { outstandingBalance: {} },
           { noFixedPayment: {} },
           { weekly: {} },

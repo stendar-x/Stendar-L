@@ -279,6 +279,7 @@ describe("stendar", () => {
         collateralAmount,
         { committed: {} },
         new anchor.BN(11_000),
+        11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },

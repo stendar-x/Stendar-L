@@ -2430,6 +2430,10 @@
           "type": "u64"
         },
         {
+          "name": "ltv_floor_bps",
+          "type": "u16"
+        },
+        {
           "name": "interest_payment_type",
           "type": {
             "defined": {

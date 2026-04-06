@@ -129,19 +129,33 @@ fn validate_proposed_terms(
         StendarError::InvalidProposedTerms
     );
     require!(
-        proposed_ltv_ratio >= 1_000 && proposed_ltv_ratio <= 20_000,
+        proposed_ltv_ratio <= 100_000,
         StendarError::InvalidProposedTerms
     );
     require!(
-        proposed_ltv_floor_bps > 0 && proposed_ltv_floor_bps <= 20_000,
+        proposed_ltv_floor_bps <= 65_500,
         StendarError::InvalidProposedTerms
     );
     require!(
         proposed_ltv_ratio >= proposed_ltv_floor_bps as u64,
         StendarError::InvalidProposedTerms
     );
+    if proposed_ltv_ratio == 0 {
+        require!(
+            proposed_interest_payment_type != InterestPaymentType::CollateralTransfer,
+            StendarError::InvalidProposedTerms
+        );
+        require!(
+            proposed_principal_payment_type != PrincipalPaymentType::CollateralDeduction,
+            StendarError::InvalidProposedTerms
+        );
+    } else if proposed_interest_payment_type == InterestPaymentType::CollateralTransfer
+        || proposed_principal_payment_type == PrincipalPaymentType::CollateralDeduction
+    {
+        require!(proposed_ltv_ratio >= 1_000, StendarError::InvalidProposedTerms);
+    }
 
-    if contract.loan_type == LoanType::Demand {
+    if contract.loan_type == LoanType::Demand && proposed_ltv_floor_bps > 0 {
         require!(
             proposed_ltv_floor_bps >= crate::state::DEMAND_LOAN_MIN_FLOOR_BPS,
             StendarError::InvalidProposedTerms

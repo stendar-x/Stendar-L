@@ -44,7 +44,7 @@ pub const POOL_IDLE_EXPIRY_SECONDS: i64 = 2_592_000; // 30 days
 pub const DEMAND_LOAN_MIN_FLOOR_BPS: u16 = 10_500; // 105% minimum floor for demand loans
 pub const LIQUIDATION_FEE_BPS: u16 = 300; // 3% liquidation fee
 pub const RECALL_FEE_BPS: u16 = 200; // 2% demand recall fee
-pub const RECALL_GRACE_PERIOD_SECONDS: i64 = 172_800; // 48 hours
+pub const RECALL_GRACE_PERIOD_SECONDS: i64 = 259_200; // 72 hours
 pub const PARTIAL_LIQUIDATION_CAP_BPS: u16 = 5_000; // 50% max per partial liquidation
 
 #[derive(Clone, Copy, Debug, Default)]
