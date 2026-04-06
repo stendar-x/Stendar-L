@@ -1,0 +1,19 @@
+.anchor
+target
+test-ledger
+node_modules
+dist
+coverage
+*.log
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Local keys
+**/*wallet*.json
+**/*authority*.json
+**/scheduler-wallet.json
+**/*-keypair.json
