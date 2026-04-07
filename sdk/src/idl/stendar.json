@@ -830,6 +830,30 @@
           "optional": true
         },
         {
+          "name": "bot_usdc_ata",
+          "docs": [
+            "Bot's USDC ATA used to front lender distributions for collateral-transfer interest."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "contract_collateral_account",
+          "docs": [
+            "Contract collateral ATA used to reimburse the bot proportionally."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "bot_collateral_ata",
+          "docs": [
+            "Bot collateral ATA that receives reimbursed collateral."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
           "name": "token_program",
           "optional": true,
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
