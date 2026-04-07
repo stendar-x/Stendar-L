@@ -44,6 +44,7 @@ pub const POOL_IDLE_EXPIRY_SECONDS: i64 = 2_592_000; // 30 days
 pub const DEMAND_LOAN_MIN_FLOOR_BPS: u16 = 10_500; // 105% minimum floor for demand loans
 pub const LIQUIDATION_FEE_BPS: u16 = 300; // 3% liquidation fee
 pub const RECALL_FEE_BPS: u16 = 200; // 2% demand recall fee
+pub const PREPAYMENT_FEE_BPS: u16 = 200; // 2% voluntary principal prepayment fee
 pub const RECALL_GRACE_PERIOD_SECONDS: i64 = 259_200; // 72 hours
 pub const PARTIAL_LIQUIDATION_CAP_BPS: u16 = 5_000; // 50% max per partial liquidation
 
@@ -53,6 +54,7 @@ struct DebtContractReservedFields {
     has_active_proposal: bool,
     proposal_count: u64,
     uncollectable_balance: u64,
+    total_prepayment_fees: u64,
 }
 
 impl DebtContractReservedFields {
@@ -62,6 +64,8 @@ impl DebtContractReservedFields {
     const PROPOSAL_COUNT_END: usize = Self::PROPOSAL_COUNT_START + 8;
     const UNCOLLECTABLE_BALANCE_START: usize = 10;
     const UNCOLLECTABLE_BALANCE_END: usize = Self::UNCOLLECTABLE_BALANCE_START + 8;
+    const TOTAL_PREPAYMENT_FEES_START: usize = 18;
+    const TOTAL_PREPAYMENT_FEES_END: usize = Self::TOTAL_PREPAYMENT_FEES_START + 8;
 
     fn from_bytes(bytes: &[u8; DEBT_CONTRACT_RESERVED_BYTES]) -> Self {
         let mut proposal_count_bytes = [0u8; 8];
@@ -73,11 +77,17 @@ impl DebtContractReservedFields {
             &bytes[Self::UNCOLLECTABLE_BALANCE_START..Self::UNCOLLECTABLE_BALANCE_END],
         );
 
+        let mut total_prepayment_fees_bytes = [0u8; 8];
+        total_prepayment_fees_bytes.copy_from_slice(
+            &bytes[Self::TOTAL_PREPAYMENT_FEES_START..Self::TOTAL_PREPAYMENT_FEES_END],
+        );
+
         Self {
             funding_access_mode: bytes[Self::FUNDING_ACCESS_MODE_INDEX],
             has_active_proposal: bytes[Self::HAS_ACTIVE_PROPOSAL_INDEX] == 1,
             proposal_count: u64::from_le_bytes(proposal_count_bytes),
             uncollectable_balance: u64::from_le_bytes(uncollectable_balance_bytes),
+            total_prepayment_fees: u64::from_le_bytes(total_prepayment_fees_bytes),
         }
     }
 
@@ -88,6 +98,8 @@ impl DebtContractReservedFields {
             .copy_from_slice(&self.proposal_count.to_le_bytes());
         bytes[Self::UNCOLLECTABLE_BALANCE_START..Self::UNCOLLECTABLE_BALANCE_END]
             .copy_from_slice(&self.uncollectable_balance.to_le_bytes());
+        bytes[Self::TOTAL_PREPAYMENT_FEES_START..Self::TOTAL_PREPAYMENT_FEES_END]
+            .copy_from_slice(&self.total_prepayment_fees.to_le_bytes());
     }
 }
 
@@ -345,6 +357,25 @@ impl DebtContract {
         let mut fields = self.reserved_fields();
         fields.uncollectable_balance = amount;
         self.write_reserved_fields(fields);
+    }
+
+    pub fn total_prepayment_fees(&self) -> u64 {
+        self.reserved_fields().total_prepayment_fees
+    }
+
+    pub fn set_total_prepayment_fees(&mut self, amount: u64) {
+        let mut fields = self.reserved_fields();
+        fields.total_prepayment_fees = amount;
+        self.write_reserved_fields(fields);
+    }
+
+    pub fn add_prepayment_fee(&mut self, amount: u64) -> Result<()> {
+        let next = self
+            .total_prepayment_fees()
+            .checked_add(amount)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+        self.set_total_prepayment_fees(next);
+        Ok(())
     }
 
     /// Calculate the next interest payment due date based on frequency
@@ -915,6 +946,29 @@ mod tests {
         assert!(contract.has_active_proposal());
         assert_eq!(contract.proposal_count(), 7);
         assert_eq!(contract.uncollectable_balance(), 123_456);
+    }
+
+    #[test]
+    fn debt_contract_reserved_bytes_track_total_prepayment_fees() {
+        let mut contract = sample_standard_contract();
+        assert_eq!(contract.total_prepayment_fees(), 0);
+
+        contract
+            .add_prepayment_fee(500)
+            .expect("first prepayment fee increment");
+        contract
+            .add_prepayment_fee(250)
+            .expect("second prepayment fee increment");
+        assert_eq!(contract.total_prepayment_fees(), 750);
+
+        // Ensure other reserved metadata remains intact.
+        contract.set_has_active_proposal(true);
+        contract.set_proposal_count(2);
+        contract.set_uncollectable_balance(99);
+        assert!(contract.has_active_proposal());
+        assert_eq!(contract.proposal_count(), 2);
+        assert_eq!(contract.uncollectable_balance(), 99);
+        assert_eq!(contract.total_prepayment_fees(), 750);
     }
 }
 

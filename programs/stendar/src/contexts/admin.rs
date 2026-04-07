@@ -106,6 +106,19 @@ pub struct AutomatedPrincipalTransfer<'info> {
         constraint = contract_usdc_account.key() == contract.loan_token_account @ StendarError::TokenAccountMismatch
     )]
     pub contract_usdc_account: Option<Account<'info, TokenAccount>>,
+    /// Bot's USDC ATA used to front lender distributions.
+    #[account(
+        mut,
+        constraint = bot_usdc_ata.owner == bot_processor.key() @ StendarError::UnauthorizedBotOperation,
+        constraint = bot_usdc_ata.mint == contract.loan_mint @ StendarError::InvalidUsdcMint
+    )]
+    pub bot_usdc_ata: Account<'info, TokenAccount>,
+    /// Contract collateral ATA used to reimburse the bot proportionally.
+    #[account(mut)]
+    pub contract_collateral_account: Option<Account<'info, TokenAccount>>,
+    /// Bot collateral ATA that receives reimbursed collateral.
+    #[account(mut)]
+    pub bot_collateral_ata: Option<Account<'info, TokenAccount>>,
     pub token_program: Option<Program<'info, Token>>,
     pub bot_processor: Signer<'info>,
     pub system_program: Program<'info, System>,

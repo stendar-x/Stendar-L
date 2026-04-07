@@ -2,11 +2,12 @@ use crate::contexts::*;
 use crate::errors::StendarError;
 use crate::state::{
     ContractOperationsFund, ContractStatus, DebtContract, LenderContribution, LenderEscrow,
+    LoanType, PrincipalPaymentType,
     OPERATIONS_FUND_SEED,
 };
 use crate::utils::{
-    is_native_mint, process_automatic_interest, process_scheduled_principal_payments,
-    require_current_version, safe_u128_to_u64,
+    calculate_prepayment_fee, is_native_mint, process_automatic_interest,
+    process_scheduled_principal_payments, require_current_version, safe_u128_to_u64,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, accessor, CloseAccount, TokenAccount, Transfer};
@@ -55,6 +56,71 @@ fn calculate_lender_share(
             .and_then(|v| v.checked_div(total_funded as u128))
             .ok_or(StendarError::ArithmeticOverflow)?,
     )
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct PrincipalAllocation {
+    effective_principal: u64,
+    prepayment_fee: u64,
+}
+
+fn calculate_principal_allocation(
+    loan_type: LoanType,
+    principal_payment_type: PrincipalPaymentType,
+    principal_payment: u64,
+) -> Result<PrincipalAllocation> {
+    if principal_payment == 0 {
+        return Ok(PrincipalAllocation::default());
+    }
+
+    let prepayment_fee = if loan_type == LoanType::Committed
+        && principal_payment_type == PrincipalPaymentType::CollateralDeduction
+    {
+        calculate_prepayment_fee(principal_payment)?
+    } else {
+        0
+    };
+
+    if prepayment_fee == 0 {
+        return Ok(PrincipalAllocation {
+            effective_principal: principal_payment,
+            prepayment_fee: 0,
+        });
+    }
+
+    let effective_principal = principal_payment
+        .checked_sub(prepayment_fee)
+        .ok_or(StendarError::ArithmeticOverflow)?;
+
+    Ok(PrincipalAllocation {
+        effective_principal,
+        prepayment_fee,
+    })
+}
+
+fn apply_principal_allocation(
+    contract: &mut DebtContract,
+    principal_payment: u64,
+) -> Result<PrincipalAllocation> {
+    let principal_allocation = calculate_principal_allocation(
+        contract.loan_type,
+        contract.principal_payment_type,
+        principal_payment,
+    )?;
+    if principal_allocation.effective_principal > 0 {
+        contract.outstanding_balance = contract
+            .outstanding_balance
+            .checked_sub(principal_allocation.effective_principal)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+        contract.total_principal_paid = contract
+            .total_principal_paid
+            .checked_add(principal_allocation.effective_principal)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+    }
+    if principal_allocation.prepayment_fee > 0 {
+        contract.add_prepayment_fee(principal_allocation.prepayment_fee)?;
+    }
+    Ok(principal_allocation)
 }
 
 pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
@@ -133,6 +199,7 @@ pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
         )?;
 
         // Apply payment: first to interest, then to principal
+        let mut principal_payment = 0u64;
         if contract.accrued_interest > 0 {
             let interest_payment = std::cmp::min(payment_amount, contract.accrued_interest);
             contract.accrued_interest = contract
@@ -148,24 +215,14 @@ pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
                 .ok_or(StendarError::ArithmeticOverflow)?;
 
             if remaining_payment > 0 {
-                contract.outstanding_balance = contract
-                    .outstanding_balance
-                    .checked_sub(remaining_payment)
-                    .ok_or(StendarError::ArithmeticOverflow)?;
-                contract.total_principal_paid = contract
-                    .total_principal_paid
-                    .checked_add(remaining_payment)
-                    .ok_or(StendarError::ArithmeticOverflow)?;
+                principal_payment = remaining_payment;
             }
         } else {
-            contract.outstanding_balance = contract
-                .outstanding_balance
-                .checked_sub(payment_amount)
-                .ok_or(StendarError::ArithmeticOverflow)?;
-            contract.total_principal_paid = contract
-                .total_principal_paid
-                .checked_add(payment_amount)
-                .ok_or(StendarError::ArithmeticOverflow)?;
+            principal_payment = payment_amount;
+        }
+
+        if principal_payment > 0 {
+            apply_principal_allocation(contract, principal_payment)?;
         }
 
         // Check if loan is fully paid
@@ -397,26 +454,12 @@ pub fn make_payment_with_distribution<'info>(
 
             if remaining_payment > 0 {
                 principal_payment = remaining_payment;
-                contract.outstanding_balance = contract
-                    .outstanding_balance
-                    .checked_sub(remaining_payment)
-                    .ok_or(StendarError::ArithmeticOverflow)?;
-                contract.total_principal_paid = contract
-                    .total_principal_paid
-                    .checked_add(remaining_payment)
-                    .ok_or(StendarError::ArithmeticOverflow)?;
             }
         } else {
             principal_payment = payment_amount;
-            contract.outstanding_balance = contract
-                .outstanding_balance
-                .checked_sub(payment_amount)
-                .ok_or(StendarError::ArithmeticOverflow)?;
-            contract.total_principal_paid = contract
-                .total_principal_paid
-                .checked_add(payment_amount)
-                .ok_or(StendarError::ArithmeticOverflow)?;
         }
+
+        let principal_allocation = apply_principal_allocation(contract, principal_payment)?;
 
         // Distribute payment to lender escrows proportionally.
         let total_funded = contract.funded_amount;
@@ -439,6 +482,7 @@ pub fn make_payment_with_distribution<'info>(
         let contribution_count = expected_contribution_accounts;
         let mut interest_distributed: u64 = 0;
         let mut principal_distributed: u64 = 0;
+        let mut fee_distributed: u64 = 0;
 
         // Process lender account bundles:
         // [contribution, escrow, escrow_usdc_ata]
@@ -504,7 +548,7 @@ pub fn make_payment_with_distribution<'info>(
                 StendarError::UnauthorizedClaim
             );
 
-            // Calculate proportional interest and principal
+            // Calculate proportional interest, principal, and prepayment fee buckets.
             let lender_interest = calculate_lender_share(
                 contribution.contribution_amount,
                 total_funded,
@@ -516,10 +560,18 @@ pub fn make_payment_with_distribution<'info>(
             let lender_principal = calculate_lender_share(
                 contribution.contribution_amount,
                 total_funded,
-                principal_payment,
+                principal_allocation.effective_principal,
                 lender_index,
                 contribution_count,
                 principal_distributed,
+            )?;
+            let lender_fee = calculate_lender_share(
+                contribution.contribution_amount,
+                total_funded,
+                principal_allocation.prepayment_fee,
+                lender_index,
+                contribution_count,
+                fee_distributed,
             )?;
             interest_distributed = interest_distributed
                 .checked_add(lender_interest)
@@ -527,9 +579,13 @@ pub fn make_payment_with_distribution<'info>(
             principal_distributed = principal_distributed
                 .checked_add(lender_principal)
                 .ok_or(StendarError::ArithmeticOverflow)?;
+            fee_distributed = fee_distributed
+                .checked_add(lender_fee)
+                .ok_or(StendarError::ArithmeticOverflow)?;
 
             let lender_total = lender_interest
                 .checked_add(lender_principal)
+                .and_then(|value| value.checked_add(lender_fee))
                 .ok_or(StendarError::ArithmeticOverflow)?;
 
             if lender_total > 0 {
@@ -613,6 +669,7 @@ pub fn make_payment_with_distribution<'info>(
                 escrow.available_interest = escrow
                     .available_interest
                     .checked_add(lender_interest)
+                    .and_then(|value| value.checked_add(lender_fee))
                     .ok_or(StendarError::ArithmeticOverflow)?;
                 escrow.available_principal = escrow
                     .available_principal
@@ -766,7 +823,65 @@ pub fn make_payment_with_distribution<'info>(
 
 #[cfg(test)]
 mod tests {
-    use super::calculate_lender_share;
+    use super::{apply_principal_allocation, calculate_lender_share, calculate_principal_allocation};
+    use crate::state::{
+        ContractStatus, DebtContract, InterestPaymentType, LoanType, PaymentFrequency,
+        PrincipalPaymentType, CURRENT_ACCOUNT_VERSION, DEBT_CONTRACT_RESERVED_BYTES,
+    };
+    use anchor_lang::prelude::Pubkey;
+
+    fn sample_contract(
+        loan_type: LoanType,
+        principal_payment_type: PrincipalPaymentType,
+        outstanding_balance: u64,
+    ) -> DebtContract {
+        DebtContract {
+            borrower: Pubkey::new_unique(),
+            contract_seed: 1,
+            target_amount: 1_000_000,
+            funded_amount: 1_000_000,
+            interest_rate: 500,
+            term_days: 30,
+            collateral_amount: 200_000,
+            loan_type,
+            ltv_ratio: 11_000,
+            interest_payment_type: InterestPaymentType::OutstandingBalance,
+            principal_payment_type,
+            interest_frequency: PaymentFrequency::Weekly,
+            principal_frequency: Some(PaymentFrequency::Weekly),
+            created_at: 1_700_000_000,
+            status: ContractStatus::Active,
+            num_contributions: 0,
+            outstanding_balance,
+            accrued_interest: 0,
+            last_interest_update: 0,
+            last_principal_payment: 0,
+            total_principal_paid: 0,
+            contributions: vec![],
+            last_bot_update: 0,
+            next_interest_payment_due: 0,
+            next_principal_payment_due: 0,
+            bot_operation_count: 0,
+            max_lenders: 14,
+            partial_funding_flag: 1,
+            expires_at: 0,
+            allow_partial_fill: false,
+            min_partial_fill_bps: 0,
+            listing_fee_paid: 0,
+            _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
+            account_version: CURRENT_ACCOUNT_VERSION,
+            contract_version: 2,
+            collateral_mint: Pubkey::new_unique(),
+            collateral_token_account: Pubkey::new_unique(),
+            collateral_value_at_creation: 0,
+            ltv_floor_bps: 11_000,
+            loan_mint: Pubkey::new_unique(),
+            loan_token_account: Pubkey::new_unique(),
+            recall_requested: false,
+            recall_requested_at: 0,
+            recall_requested_by: Pubkey::default(),
+        }
+    }
 
     #[test]
     fn calculate_lender_share_assigns_rounding_remainder_to_last_lender() {
@@ -800,5 +915,120 @@ mod tests {
     fn calculate_lender_share_is_zero_when_no_payment_exists() {
         let share = calculate_lender_share(10, 100, 0, 0, 1, 0).expect("share should be zero");
         assert_eq!(share, 0);
+    }
+
+    #[test]
+    fn prepayment_fee_gate_skips_for_demand_loans() {
+        let allocation =
+            calculate_principal_allocation(LoanType::Demand, PrincipalPaymentType::CollateralDeduction, 50)
+                .expect("allocation should succeed");
+        assert_eq!(allocation.effective_principal, 50);
+        assert_eq!(allocation.prepayment_fee, 0);
+    }
+
+    #[test]
+    fn prepayment_fee_gate_skips_for_no_fixed_payment() {
+        let allocation =
+            calculate_principal_allocation(LoanType::Committed, PrincipalPaymentType::NoFixedPayment, 50)
+                .expect("allocation should succeed");
+        assert_eq!(allocation.effective_principal, 50);
+        assert_eq!(allocation.prepayment_fee, 0);
+    }
+
+    #[test]
+    fn prepayment_fee_applies_for_committed_collateral_deduction() {
+        let allocation = calculate_principal_allocation(
+            LoanType::Committed,
+            PrincipalPaymentType::CollateralDeduction,
+            50,
+        )
+        .expect("allocation should succeed");
+        assert_eq!(allocation.effective_principal, 49);
+        assert_eq!(allocation.prepayment_fee, 1);
+    }
+
+    #[test]
+    fn apply_principal_allocation_updates_balance_and_fee_tracking() {
+        let mut contract = sample_contract(
+            LoanType::Committed,
+            PrincipalPaymentType::CollateralDeduction,
+            1_000,
+        );
+        let allocation =
+            apply_principal_allocation(&mut contract, 50).expect("allocation should apply");
+
+        assert_eq!(allocation.effective_principal, 49);
+        assert_eq!(allocation.prepayment_fee, 1);
+        assert_eq!(contract.outstanding_balance, 951);
+        assert_eq!(contract.total_principal_paid, 49);
+        assert_eq!(contract.total_prepayment_fees(), 1);
+    }
+
+    #[test]
+    fn distribution_buckets_route_fee_to_interest_bucket() {
+        let contribution_amounts = [600u64, 400u64];
+        let total_funded = 1_000u64;
+        let interest_payment = 30u64;
+        let principal_payment = 50u64;
+        let allocation = calculate_principal_allocation(
+            LoanType::Committed,
+            PrincipalPaymentType::CollateralDeduction,
+            principal_payment,
+        )
+        .expect("allocation should succeed");
+        assert_eq!(allocation.effective_principal, 49);
+        assert_eq!(allocation.prepayment_fee, 1);
+
+        let mut interest_distributed = 0u64;
+        let mut principal_distributed = 0u64;
+        let mut fee_distributed = 0u64;
+        let mut available_interest_total = 0u64;
+        let mut available_principal_total = 0u64;
+
+        for (index, contribution_amount) in contribution_amounts.iter().copied().enumerate() {
+            let lender_interest = calculate_lender_share(
+                contribution_amount,
+                total_funded,
+                interest_payment,
+                index,
+                contribution_amounts.len(),
+                interest_distributed,
+            )
+            .expect("interest share should succeed");
+            let lender_principal = calculate_lender_share(
+                contribution_amount,
+                total_funded,
+                allocation.effective_principal,
+                index,
+                contribution_amounts.len(),
+                principal_distributed,
+            )
+            .expect("principal share should succeed");
+            let lender_fee = calculate_lender_share(
+                contribution_amount,
+                total_funded,
+                allocation.prepayment_fee,
+                index,
+                contribution_amounts.len(),
+                fee_distributed,
+            )
+            .expect("fee share should succeed");
+
+            interest_distributed += lender_interest;
+            principal_distributed += lender_principal;
+            fee_distributed += lender_fee;
+
+            available_interest_total += lender_interest + lender_fee;
+            available_principal_total += lender_principal;
+        }
+
+        assert_eq!(interest_distributed, interest_payment);
+        assert_eq!(principal_distributed, allocation.effective_principal);
+        assert_eq!(fee_distributed, allocation.prepayment_fee);
+        assert_eq!(
+            available_interest_total,
+            interest_payment + allocation.prepayment_fee
+        );
+        assert_eq!(available_principal_total, allocation.effective_principal);
     }
 }

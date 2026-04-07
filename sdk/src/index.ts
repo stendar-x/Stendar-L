@@ -74,6 +74,11 @@ export {
   withSubmissionId,
 } from './utils/idempotency';
 
+export {
+  PREPAYMENT_FEE_BPS,
+  calculatePrepaymentFee,
+} from './utils/fees';
+
 export { stendarIdl } from './idl';
 
 export * from './types';
