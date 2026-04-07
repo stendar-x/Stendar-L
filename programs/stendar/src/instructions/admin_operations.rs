@@ -1,8 +1,8 @@
 use crate::contexts::*;
 use crate::errors::StendarError;
 use crate::state::{
-    AuthorityUpdated, ContractStatus, LenderContribution, LenderEscrow, PlatformPauseToggled,
-    PlatformStats, CURRENT_ACCOUNT_VERSION, TREASURY_SEED,
+    AuthorityUpdated, ContractStatus, InterestPaymentType, LenderContribution, LenderEscrow,
+    PlatformPauseToggled, PlatformStats, CURRENT_ACCOUNT_VERSION, TREASURY_SEED,
 };
 use crate::utils::{
     calculate_reimbursement, process_automatic_interest, process_scheduled_principal_payments,
@@ -178,33 +178,59 @@ pub fn automated_interest_transfer<'info>(
 
     let contract_key = ctx.accounts.contract.key();
     let contract_info = ctx.accounts.contract.to_account_info();
+    let bot_processor_info = ctx.accounts.bot_processor.to_account_info();
     let contract_funded_amount = ctx.accounts.contract.funded_amount;
     let accrued_interest = ctx.accounts.contract.accrued_interest;
     let contract_borrower = ctx.accounts.contract.borrower;
     let contract_loan_mint = ctx.accounts.contract.loan_mint;
+    let contract_collateral_mint = ctx.accounts.contract.collateral_mint;
+    let interest_payment_type = ctx.accounts.contract.interest_payment_type;
 
     let token_program = ctx
         .accounts
         .token_program
         .as_ref()
         .ok_or(StendarError::MissingTokenAccounts)?;
-    let contract_usdc_account = ctx
-        .accounts
-        .contract_usdc_account
-        .as_ref()
-        .ok_or(StendarError::MissingTokenAccounts)?;
-    require!(
-        ctx.accounts.contract.loan_token_account == contract_usdc_account.key(),
-        StendarError::TokenAccountMismatch
-    );
-    require!(
-        contract_usdc_account.owner == contract_key,
-        StendarError::TokenAccountMismatch
-    );
-    require!(
-        contract_usdc_account.mint == contract_loan_mint,
-        StendarError::InvalidUsdcMint
-    );
+    let contract_usdc_info = if interest_payment_type == InterestPaymentType::OutstandingBalance {
+        let contract_usdc_account = ctx
+            .accounts
+            .contract_usdc_account
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        require!(
+            ctx.accounts.contract.loan_token_account == contract_usdc_account.key(),
+            StendarError::TokenAccountMismatch
+        );
+        require!(
+            contract_usdc_account.owner == contract_key,
+            StendarError::TokenAccountMismatch
+        );
+        require!(
+            contract_usdc_account.mint == contract_loan_mint,
+            StendarError::InvalidUsdcMint
+        );
+        Some(contract_usdc_account.to_account_info())
+    } else {
+        None
+    };
+    let bot_usdc_info = if interest_payment_type == InterestPaymentType::CollateralTransfer {
+        let bot_usdc_ata = ctx
+            .accounts
+            .bot_usdc_ata
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        require!(
+            bot_usdc_ata.owner == ctx.accounts.bot_processor.key(),
+            StendarError::UnauthorizedBotOperation
+        );
+        require!(
+            bot_usdc_ata.mint == contract_loan_mint,
+            StendarError::InvalidUsdcMint
+        );
+        Some(bot_usdc_ata.to_account_info())
+    } else {
+        None
+    };
 
     let contract_seed_bytes = ctx.accounts.contract.contract_seed.to_le_bytes();
     let (expected_contract_pda, contract_bump) = Pubkey::find_program_address(
@@ -220,8 +246,13 @@ pub fn automated_interest_transfer<'info>(
         StendarError::InvalidContractReference
     );
     let token_program_info = token_program.to_account_info();
-    let contract_usdc_info = contract_usdc_account.to_account_info();
     let bump_bytes = [contract_bump];
+    let signer_seeds: &[&[u8]] = &[
+        b"debt_contract",
+        contract_borrower.as_ref(),
+        &contract_seed_bytes,
+        &bump_bytes,
+    ];
 
     let remaining_accounts = ctx.remaining_accounts;
     let expected_contribution_accounts = ctx.accounts.contract.contributions.len();
@@ -340,25 +371,41 @@ pub fn automated_interest_transfer<'info>(
                 StendarError::TokenAccountMismatch
             );
 
-            let signer_seeds: &[&[u8]] = &[
-                b"debt_contract",
-                contract_borrower.as_ref(),
-                &contract_seed_bytes,
-                &bump_bytes,
-            ];
-
-            token::transfer(
-                CpiContext::new_with_signer(
-                    token_program_info.clone(),
-                    Transfer {
-                        from: contract_usdc_info.clone(),
-                        to: lender_usdc_info.to_account_info(),
-                        authority: contract_info.clone(),
-                    },
-                    &[signer_seeds],
-                ),
-                lender_interest_share,
-            )?;
+            match interest_payment_type {
+                InterestPaymentType::OutstandingBalance => {
+                    let contract_usdc_info = contract_usdc_info
+                        .as_ref()
+                        .ok_or(StendarError::MissingTokenAccounts)?;
+                    token::transfer(
+                        CpiContext::new_with_signer(
+                            token_program_info.clone(),
+                            Transfer {
+                                from: contract_usdc_info.clone(),
+                                to: lender_usdc_info.to_account_info(),
+                                authority: contract_info.clone(),
+                            },
+                            &[signer_seeds],
+                        ),
+                        lender_interest_share,
+                    )?;
+                }
+                InterestPaymentType::CollateralTransfer => {
+                    let bot_usdc_info = bot_usdc_info
+                        .as_ref()
+                        .ok_or(StendarError::MissingTokenAccounts)?;
+                    token::transfer(
+                        CpiContext::new(
+                            token_program_info.clone(),
+                            Transfer {
+                                from: bot_usdc_info.clone(),
+                                to: lender_usdc_info.to_account_info(),
+                                authority: bot_processor_info.clone(),
+                            },
+                        ),
+                        lender_interest_share,
+                    )?;
+                }
+            }
 
             // Estimate transaction cost (approx 5000 lamports per transfer)
             total_tx_cost = total_tx_cost
@@ -373,11 +420,67 @@ pub fn automated_interest_transfer<'info>(
         StendarError::InvalidContribution
     );
 
+    let mut collateral_withdraw = 0u64;
+    if interest_payment_type == InterestPaymentType::CollateralTransfer {
+        collateral_withdraw = calculate_collateral_withdraw(
+            ctx.accounts.contract.collateral_amount,
+            accrued_interest,
+            ctx.accounts.contract.outstanding_balance,
+        )?;
+
+        if collateral_withdraw > 0 {
+            let contract_collateral_account = ctx
+                .accounts
+                .contract_collateral_account
+                .as_ref()
+                .ok_or(StendarError::MissingTokenAccounts)?;
+            let bot_collateral_ata = ctx
+                .accounts
+                .bot_collateral_ata
+                .as_ref()
+                .ok_or(StendarError::MissingTokenAccounts)?;
+
+            require!(
+                contract_collateral_account.key() == ctx.accounts.contract.collateral_token_account,
+                StendarError::TokenAccountMismatch
+            );
+            require!(
+                contract_collateral_account.owner == contract_key
+                    && contract_collateral_account.mint == contract_collateral_mint,
+                StendarError::TokenAccountMismatch
+            );
+            require!(
+                bot_collateral_ata.owner == ctx.accounts.bot_processor.key()
+                    && bot_collateral_ata.mint == contract_collateral_mint,
+                StendarError::TokenAccountMismatch
+            );
+
+            token::transfer(
+                CpiContext::new_with_signer(
+                    token_program_info.clone(),
+                    Transfer {
+                        from: contract_collateral_account.to_account_info(),
+                        to: bot_collateral_ata.to_account_info(),
+                        authority: contract_info.clone(),
+                    },
+                    &[signer_seeds],
+                ),
+                collateral_withdraw,
+            )?;
+        }
+    }
+
     // Update contract state
     {
         let contract = &mut ctx.accounts.contract;
         require_current_version(contract.account_version)?;
         require_current_version(ctx.accounts.treasury.account_version)?;
+        if collateral_withdraw > 0 {
+            contract.collateral_amount = contract
+                .collateral_amount
+                .checked_sub(collateral_withdraw)
+                .ok_or(StendarError::ArithmeticOverflow)?;
+        }
         contract.accrued_interest = 0; // Reset after distribution
         contract.last_interest_update = current_time;
 
@@ -1053,5 +1156,19 @@ mod tests {
         let collateral_withdraw =
             calculate_collateral_withdraw(1_250_000, 250_000, 1_000_000).expect("math should work");
         assert_eq!(collateral_withdraw, 312_500);
+    }
+
+    #[test]
+    fn collateral_withdraw_for_interest_with_full_balance_interest_withdraws_all_collateral() {
+        let collateral_withdraw =
+            calculate_collateral_withdraw(900_000, 450_000, 450_000).expect("math should work");
+        assert_eq!(collateral_withdraw, 900_000);
+    }
+
+    #[test]
+    fn collateral_withdraw_for_interest_rejects_zero_outstanding_balance() {
+        let err = calculate_collateral_withdraw(900_000, 10_000, 0)
+            .expect_err("non-zero interest requires outstanding balance");
+        assert_stendar_error(err, StendarError::InvalidPaymentAmount);
     }
 }
