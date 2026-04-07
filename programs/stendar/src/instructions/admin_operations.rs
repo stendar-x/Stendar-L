@@ -21,6 +21,23 @@ fn require_automated_principal_versions(
     Ok(())
 }
 
+fn calculate_collateral_withdraw(
+    total_collateral: u64,
+    principal_paid: u64,
+    outstanding_balance_before: u64,
+) -> Result<u64> {
+    if principal_paid == 0 || total_collateral == 0 {
+        return Ok(0);
+    }
+    require!(outstanding_balance_before > 0, StendarError::InvalidPaymentAmount);
+
+    let collateral_withdraw = (total_collateral as u128)
+        .checked_mul(principal_paid as u128)
+        .and_then(|value| value.checked_div(outstanding_balance_before as u128))
+        .ok_or(StendarError::ArithmeticOverflow)?;
+    u64::try_from(collateral_withdraw).map_err(|_| error!(StendarError::ArithmeticOverflow))
+}
+
 pub fn get_platform_stats(ctx: Context<GetPlatformStats>) -> Result<PlatformStats> {
     let state = &ctx.accounts.state;
     require_current_version(state.account_version)?;
@@ -446,7 +463,7 @@ pub fn automated_principal_transfer<'info>(
     );
     require!(!ctx.accounts.state.is_paused, StendarError::PlatformPaused);
 
-    {
+    let outstanding_balance_before = {
         let contract = &mut ctx.accounts.contract;
         require_automated_principal_versions(
             contract.account_version,
@@ -464,16 +481,20 @@ pub fn automated_principal_transfer<'info>(
         );
 
         // Update contract state to calculate scheduled principal payments
+        let outstanding_balance_before = contract.outstanding_balance;
         process_automatic_interest(contract, current_time)?;
         process_scheduled_principal_payments(contract, current_time)?;
-    }
+        outstanding_balance_before
+    };
 
     let contract_key = ctx.accounts.contract.key();
     let contract_info = ctx.accounts.contract.to_account_info();
+    let bot_processor_info = ctx.accounts.bot_processor.to_account_info();
     let contract_funded_amount = ctx.accounts.contract.funded_amount;
     let available_principal = ctx.accounts.contract.total_principal_paid;
     let contract_borrower = ctx.accounts.contract.borrower;
     let contract_loan_mint = ctx.accounts.contract.loan_mint;
+    let contract_collateral_mint = ctx.accounts.contract.collateral_mint;
 
     let token_program = ctx
         .accounts
@@ -497,6 +518,15 @@ pub fn automated_principal_transfer<'info>(
         contract_usdc_account.mint == contract_loan_mint,
         StendarError::InvalidUsdcMint
     );
+    let bot_usdc_ata = &ctx.accounts.bot_usdc_ata;
+    require!(
+        bot_usdc_ata.mint == contract_loan_mint,
+        StendarError::InvalidUsdcMint
+    );
+    require!(
+        bot_usdc_ata.owner == ctx.accounts.bot_processor.key(),
+        StendarError::UnauthorizedBotOperation
+    );
 
     let contract_seed_bytes = ctx.accounts.contract.contract_seed.to_le_bytes();
     let (expected_contract_pda, contract_bump) = Pubkey::find_program_address(
@@ -512,8 +542,14 @@ pub fn automated_principal_transfer<'info>(
         StendarError::InvalidContractReference
     );
     let token_program_info = token_program.to_account_info();
-    let contract_usdc_info = contract_usdc_account.to_account_info();
+    let bot_usdc_info = bot_usdc_ata.to_account_info();
     let bump_bytes = [contract_bump];
+    let signer_seeds: &[&[u8]] = &[
+        b"debt_contract",
+        contract_borrower.as_ref(),
+        &contract_seed_bytes,
+        &bump_bytes,
+    ];
 
     require!(available_principal > 0, StendarError::NoPaymentDue);
 
@@ -634,22 +670,14 @@ pub fn automated_principal_transfer<'info>(
                 StendarError::TokenAccountMismatch
             );
 
-            let signer_seeds: &[&[u8]] = &[
-                b"debt_contract",
-                contract_borrower.as_ref(),
-                &contract_seed_bytes,
-                &bump_bytes,
-            ];
-
             token::transfer(
-                CpiContext::new_with_signer(
+                CpiContext::new(
                     token_program_info.clone(),
                     Transfer {
-                        from: contract_usdc_info.clone(),
+                        from: bot_usdc_info.clone(),
                         to: lender_usdc_info.to_account_info(),
-                        authority: contract_info.clone(),
+                        authority: bot_processor_info.clone(),
                     },
-                    &[signer_seeds],
                 ),
                 lender_principal_share,
             )?;
@@ -667,6 +695,53 @@ pub fn automated_principal_transfer<'info>(
         StendarError::InvalidContribution
     );
 
+    let collateral_withdraw = calculate_collateral_withdraw(
+        ctx.accounts.contract.collateral_amount,
+        available_principal,
+        outstanding_balance_before,
+    )?;
+
+    if collateral_withdraw > 0 {
+        let contract_collateral_account = ctx
+            .accounts
+            .contract_collateral_account
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+        let bot_collateral_ata = ctx
+            .accounts
+            .bot_collateral_ata
+            .as_ref()
+            .ok_or(StendarError::MissingTokenAccounts)?;
+
+        require!(
+            contract_collateral_account.key() == ctx.accounts.contract.collateral_token_account,
+            StendarError::TokenAccountMismatch
+        );
+        require!(
+            contract_collateral_account.owner == contract_key
+                && contract_collateral_account.mint == contract_collateral_mint,
+            StendarError::TokenAccountMismatch
+        );
+        require!(
+            bot_collateral_ata.owner == ctx.accounts.bot_processor.key()
+                && bot_collateral_ata.mint == contract_collateral_mint,
+            StendarError::TokenAccountMismatch
+        );
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                token_program_info.clone(),
+                Transfer {
+                    from: contract_collateral_account.to_account_info(),
+                    to: bot_collateral_ata.to_account_info(),
+                    authority: contract_info.clone(),
+                },
+                &[signer_seeds],
+            ),
+            collateral_withdraw,
+        )?;
+    }
+
     // Update contract state
     {
         let contract = &mut ctx.accounts.contract;
@@ -674,6 +749,10 @@ pub fn automated_principal_transfer<'info>(
             contract.account_version,
             ctx.accounts.treasury.account_version,
         )?;
+        contract.collateral_amount = contract
+            .collateral_amount
+            .checked_sub(collateral_withdraw)
+            .ok_or(StendarError::ArithmeticOverflow)?;
         contract.total_principal_paid = 0; // Reset after distribution
         contract.last_principal_payment = current_time;
         // Keep bot scheduling fields consistent with interest automation.
@@ -945,5 +1024,34 @@ mod tests {
         let err = require_automated_principal_versions(CURRENT_ACCOUNT_VERSION, 0)
             .expect_err("stale treasury version must fail");
         assert_stendar_error(err, StendarError::AccountNeedsMigration);
+    }
+
+    #[test]
+    fn collateral_withdraw_preserves_ltv_ratio() {
+        let collateral_withdraw =
+            calculate_collateral_withdraw(500_000, 100_000, 1_000_000).expect("math should work");
+        assert_eq!(collateral_withdraw, 50_000);
+    }
+
+    #[test]
+    fn collateral_withdraw_is_zero_when_no_principal_paid() {
+        let collateral_withdraw =
+            calculate_collateral_withdraw(500_000, 0, 1_000_000).expect("zero principal is valid");
+        assert_eq!(collateral_withdraw, 0);
+    }
+
+    #[test]
+    fn collateral_withdraw_is_zero_when_contract_has_no_collateral() {
+        let collateral_withdraw =
+            calculate_collateral_withdraw(0, 100_000, 1_000_000).expect("zero collateral is valid");
+        assert_eq!(collateral_withdraw, 0);
+    }
+
+    #[test]
+    fn collateral_withdraw_matches_bot_reimbursement_amount() {
+        // Bot should receive the same proportional collateral deducted from the contract.
+        let collateral_withdraw =
+            calculate_collateral_withdraw(1_250_000, 250_000, 1_000_000).expect("math should work");
+        assert_eq!(collateral_withdraw, 312_500);
     }
 }

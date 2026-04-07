@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::StendarError;
-use crate::state::{InterestPaymentType, PaymentFrequency, PrincipalPaymentType};
+use crate::state::{InterestPaymentType, PaymentFrequency, PrincipalPaymentType, PREPAYMENT_FEE_BPS};
 
 // Platform fee configuration
 pub const PLATFORM_FEE_BPS: u64 = 1; // 0.01%
@@ -46,6 +46,14 @@ fn calculate_fee_with_bps(amount: u64, fee_bps: u64, min_fee: u64, max_fee: u64)
         .ok_or(StendarError::ArithmeticOverflow)?;
     let pct_fee = u64::try_from(pct_fee).map_err(|_| error!(StendarError::ArithmeticOverflow))?;
     Ok(std::cmp::min(std::cmp::max(pct_fee, min_fee), max_fee))
+}
+
+pub fn calculate_prepayment_fee(principal_amount: u64) -> Result<u64> {
+    let fee = (principal_amount as u128)
+        .checked_mul(PREPAYMENT_FEE_BPS as u128)
+        .and_then(|value| value.checked_div(10_000))
+        .ok_or(StendarError::ArithmeticOverflow)?;
+    u64::try_from(fee).map_err(|_| error!(StendarError::ArithmeticOverflow))
 }
 
 #[allow(dead_code)]
@@ -361,5 +369,20 @@ mod tests {
             calculate_reimbursement(14, 15).unwrap(),
             2 * TX_FEE_ESTIMATE
         );
+    }
+
+    #[test]
+    fn prepayment_fee_handles_edge_cases_and_rounding() {
+        assert_eq!(calculate_prepayment_fee(0).unwrap(), 0);
+        assert_eq!(calculate_prepayment_fee(1).unwrap(), 0);
+        assert_eq!(calculate_prepayment_fee(50).unwrap(), 1);
+        assert_eq!(calculate_prepayment_fee(100).unwrap(), 2);
+    }
+
+    #[test]
+    fn prepayment_fee_supports_large_amounts() {
+        let fee = calculate_prepayment_fee(u64::MAX).unwrap();
+        let expected = ((u64::MAX as u128) * (PREPAYMENT_FEE_BPS as u128) / 10_000) as u64;
+        assert_eq!(fee, expected);
     }
 }
