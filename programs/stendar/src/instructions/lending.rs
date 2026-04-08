@@ -12,8 +12,9 @@ use crate::state::{
 };
 use crate::utils::{
     calculate_collateral_to_seize, calculate_collateral_value_in_usdc, calculate_fee_tenths_bps,
-    calculate_ltv_bps, calculate_operations_fund, calculate_proportional_collateral, check_health,
-    get_price_in_usdc, is_native_mint, process_automatic_interest,
+    calculate_ltv_bps, calculate_operations_fund, calculate_proportional_collateral,
+    check_health, check_revolving_completion, checkpoint_standby_fees, get_price_in_usdc,
+    is_native_mint, process_automatic_interest,
     process_scheduled_principal_payments, require_current_version, safe_u128_to_u64, HealthStatus,
     MAX_CONFIDENCE_BPS_LIQUIDATION, MAX_CONFIDENCE_BPS_STANDARD, MAX_LENDERS_PER_TX,
     MAX_PRICE_AGE_CREATION, MAX_PRICE_AGE_LIQUIDATION,
@@ -215,6 +216,19 @@ pub(crate) fn activate_open_contract_funding<'info>(
     let disbursement_amount = contract.funded_amount;
     contract.target_amount = disbursement_amount;
     contract.status = ContractStatus::Active;
+    if contract.is_revolving {
+        contract.credit_limit = disbursement_amount;
+        contract.drawn_amount = 0;
+        contract.available_amount = disbursement_amount;
+        contract.outstanding_balance = 0;
+        contract.last_interest_update = 0;
+        contract.last_principal_payment = 0;
+        contract.last_standby_fee_update = current_time;
+        contract.revolving_closed = false;
+        contract.update_bot_tracking(current_time);
+        return Ok(());
+    }
+
     contract.outstanding_balance = disbursement_amount;
     contract.last_interest_update = current_time;
     contract.last_principal_payment = current_time;
@@ -414,6 +428,8 @@ pub fn create_debt_contract(
     partial_funding_enabled: bool,
     allow_partial_fill: bool,
     min_partial_fill_bps: u16,
+    is_revolving: bool,
+    standby_fee_rate: u32,
     _distribution_method: DistributionMethod,
     funding_access_mode: FundingAccessMode,
 ) -> Result<()> {
@@ -476,6 +492,21 @@ pub fn create_debt_contract(
         0
     };
 
+    if is_revolving {
+        require!(
+            standby_fee_rate > 0 && standby_fee_rate < interest_rate,
+            StendarError::InvalidStandbyFeeRate
+        );
+        require!(
+            principal_payment_type == PrincipalPaymentType::NoFixedPayment,
+            StendarError::RevolvingPrincipalPaymentNotAllowed
+        );
+        require!(
+            principal_frequency.is_none(),
+            StendarError::RevolvingPrincipalPaymentNotAllowed
+        );
+    }
+
     if principal_payment_type == PrincipalPaymentType::NoFixedPayment {
         require!(
             principal_frequency.is_none(),
@@ -527,7 +558,7 @@ pub fn create_debt_contract(
         .usdc_mint
         .as_ref()
         .ok_or(StendarError::MissingTokenAccounts)?;
-    let _contract_usdc_ata = ctx
+    let contract_usdc_ata = ctx
         .accounts
         .contract_usdc_ata
         .as_ref()
@@ -570,6 +601,10 @@ pub fn create_debt_contract(
 
     require!(
         treasury.treasury_usdc_account == treasury_usdc_account.key(),
+        StendarError::TokenAccountMismatch
+    );
+    require!(
+        contract_usdc_ata.owner == contract_key && contract_usdc_ata.mint == usdc_mint.key(),
         StendarError::TokenAccountMismatch
     );
 
@@ -650,11 +685,21 @@ pub fn create_debt_contract(
     contract.collateral_token_account = Pubkey::default();
     contract.collateral_value_at_creation = 0;
     contract.ltv_floor_bps = ltv_floor_bps;
-    contract.loan_mint = Pubkey::default();
-    contract.loan_token_account = Pubkey::default();
+    contract.loan_mint = usdc_mint.key();
+    contract.loan_token_account = contract_usdc_ata.key();
     contract.recall_requested = false;
     contract.recall_requested_at = 0;
     contract.recall_requested_by = Pubkey::default();
+    contract.is_revolving = is_revolving;
+    contract.credit_limit = 0;
+    contract.drawn_amount = 0;
+    contract.available_amount = 0;
+    contract.standby_fee_rate = if is_revolving { standby_fee_rate } else { 0 };
+    contract.accrued_standby_fees = 0;
+    contract.last_standby_fee_update = 0;
+    contract.total_draws = 0;
+    contract.total_standby_fees_paid = 0;
+    contract.revolving_closed = false;
     contract._reserved = [0u8; RESERVED_TAIL_BYTES];
 
     state.total_contracts = state
@@ -1568,6 +1613,10 @@ fn liquidate_contract_standard<'info>(
         term_days,
         current_time,
     )?;
+    if ctx.accounts.contract.is_revolving && is_time_triggered {
+        let contract = &mut ctx.accounts.contract;
+        contract.revolving_closed = true;
+    }
 
     let (price, exponent) = get_price_in_usdc(
         price_feed,
@@ -1599,17 +1648,43 @@ fn liquidate_contract_standard<'info>(
 
     {
         let contract = &mut ctx.accounts.contract;
+        if contract.is_revolving {
+            checkpoint_standby_fees(contract, current_time)?;
+        }
         process_automatic_interest(contract, current_time)?;
+        let total_owed = if contract.is_revolving {
+            contract
+                .drawn_amount
+                .checked_add(contract.accrued_interest)
+                .and_then(|value| value.checked_add(contract.accrued_standby_fees))
+                .ok_or(StendarError::ArithmeticOverflow)?
+        } else {
+            contract.outstanding_balance
+        };
         require!(
-            contract.outstanding_balance > 0,
+            total_owed > 0,
             StendarError::ContractNotInDefault
         );
     }
 
-    let bot_pays_usdc = calculate_bot_payment(
-        ctx.accounts.contract.outstanding_balance,
-        collateral_value_usdc,
-    );
+    let total_owed_for_liquidation = if ctx.accounts.contract.is_revolving {
+        ctx.accounts
+            .contract
+            .drawn_amount
+            .checked_add(ctx.accounts.contract.accrued_interest)
+            .and_then(|value| value.checked_add(ctx.accounts.contract.accrued_standby_fees))
+            .ok_or(StendarError::ArithmeticOverflow)?
+    } else {
+        ctx.accounts.contract.outstanding_balance
+    };
+    let bot_pays_usdc = calculate_bot_payment(total_owed_for_liquidation, collateral_value_usdc);
+    let distribute_usdc_total = if ctx.accounts.contract.is_revolving {
+        bot_pays_usdc
+            .checked_add(ctx.accounts.contract.available_amount)
+            .ok_or(StendarError::ArithmeticOverflow)?
+    } else {
+        bot_pays_usdc
+    };
     let all_collateral = contract_collateral_ata.amount;
     let (capped_collateral_for_bot, excess_collateral) = compute_full_liquidation_collateral_split(
         bot_pays_usdc,
@@ -1811,11 +1886,11 @@ fn liquidate_contract_standard<'info>(
         }
 
         let lender_share = if index + 1 == contribution_count {
-            bot_pays_usdc.saturating_sub(distributed_usdc)
+            distribute_usdc_total.saturating_sub(distributed_usdc)
         } else {
             safe_u128_to_u64(
                 (contribution.contribution_amount as u128)
-                    .checked_mul(bot_pays_usdc as u128)
+                    .checked_mul(distribute_usdc_total as u128)
                     .and_then(|value| value.checked_div(funded_amount as u128))
                     .ok_or(StendarError::ArithmeticOverflow)?,
             )?
@@ -1860,6 +1935,15 @@ fn liquidate_contract_standard<'info>(
         let contract = &mut ctx.accounts.contract;
         let state = &mut ctx.accounts.state;
         finalize_full_liquidation(contract, state, bot_pays_usdc, current_time)?;
+        if contract.is_revolving {
+            contract.revolving_closed = true;
+            contract.credit_limit = 0;
+            contract.available_amount = 0;
+            contract.drawn_amount = 0;
+            contract.accrued_interest = 0;
+            contract.accrued_standby_fees = 0;
+            contract.outstanding_balance = 0;
+        }
     }
 
     let liquidation_fee_usdc = safe_u128_to_u64(
@@ -1967,9 +2051,7 @@ fn finalize_full_liquidation(
 ) -> Result<()> {
     let pre_liquidation_debt = contract.outstanding_balance;
     let pre_liquidation_collateral = contract.collateral_amount;
-    let shortfall = pre_liquidation_debt
-        .checked_sub(bot_pays_usdc)
-        .ok_or(StendarError::ArithmeticOverflow)?;
+    let shortfall = pre_liquidation_debt.saturating_sub(bot_pays_usdc);
 
     contract.status = ContractStatus::Liquidated;
     contract.uncollectable_balance = shortfall;
@@ -2128,6 +2210,9 @@ pub fn partial_liquidate<'info>(
     {
         let contract = &mut ctx.accounts.contract;
         let current_time = Clock::get()?.unix_timestamp;
+        if contract.is_revolving {
+            checkpoint_standby_fees(contract, current_time)?;
+        }
         process_automatic_interest(contract, current_time)?;
     }
     let contract = &ctx.accounts.contract;
@@ -2430,10 +2515,11 @@ pub fn partial_liquidate<'info>(
     let current_time = Clock::get()?.unix_timestamp;
     let completed_by_partial_liquidation = {
         let contract = &mut ctx.accounts.contract;
-        contract.outstanding_balance = contract
+        let next_outstanding = contract
             .outstanding_balance
             .checked_sub(capped_repay)
             .ok_or(StendarError::ArithmeticOverflow)?;
+        contract.outstanding_balance = next_outstanding;
         contract.collateral_amount = contract
             .collateral_amount
             .checked_sub(actual_seize)
@@ -2442,7 +2528,20 @@ pub fn partial_liquidate<'info>(
             .total_principal_paid
             .checked_add(capped_repay)
             .ok_or(StendarError::ArithmeticOverflow)?;
-        let completed = contract.outstanding_balance == 0;
+        if contract.is_revolving {
+            contract.drawn_amount = contract
+                .drawn_amount
+                .checked_sub(capped_repay)
+                .ok_or(StendarError::ArithmeticOverflow)?;
+            contract.credit_limit = contract.credit_limit.saturating_sub(capped_repay);
+            contract.available_amount = contract.credit_limit.saturating_sub(contract.drawn_amount);
+            contract.outstanding_balance = contract.drawn_amount;
+        }
+        let completed = if contract.is_revolving {
+            check_revolving_completion(contract)
+        } else {
+            contract.outstanding_balance == 0
+        };
         if completed {
             contract.status = ContractStatus::Completed;
         }
@@ -2495,6 +2594,10 @@ pub fn request_recall(ctx: Context<RequestRecall>) -> Result<()> {
     contract.recall_requested = true;
     contract.recall_requested_at = current_time;
     contract.recall_requested_by = lender_key;
+    if contract.is_revolving {
+        contract.revolving_closed = true;
+        contract.available_amount = 0;
+    }
     contract.status = ContractStatus::PendingRecall;
     contract.update_bot_tracking(current_time);
 
@@ -3580,6 +3683,16 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            is_revolving: false,
+            credit_limit: 0,
+            drawn_amount: 0,
+            available_amount: 0,
+            standby_fee_rate: 0,
+            accrued_standby_fees: 0,
+            last_standby_fee_update: 0,
+            total_draws: 0,
+            total_standby_fees_paid: 0,
+            revolving_closed: false,
             _reserved: [0u8; RESERVED_TAIL_BYTES],
         }
     }

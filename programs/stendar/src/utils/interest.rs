@@ -6,6 +6,30 @@ use anchor_lang::prelude::*;
 const MAX_OUTSTANDING_BALANCE_MULTIPLIER: u64 = 3;
 
 pub fn process_automatic_interest(contract: &mut DebtContract, current_time: i64) -> Result<()> {
+    if contract.is_revolving {
+        if contract.last_interest_update == 0 {
+            return Ok(());
+        }
+
+        let time_elapsed = current_time
+            .checked_sub(contract.last_interest_update)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+        if time_elapsed <= 0 {
+            return Ok(());
+        }
+
+        let interest_accrued =
+            calculate_interest(contract.drawn_amount, contract.interest_rate as u64, time_elapsed)?;
+        if interest_accrued > 0 {
+            contract.accrued_interest = contract
+                .accrued_interest
+                .checked_add(interest_accrued)
+                .ok_or(StendarError::ArithmeticOverflow)?;
+        }
+        contract.last_interest_update = current_time;
+        return Ok(());
+    }
+
     if contract.last_interest_update == 0 && contract.status == ContractStatus::Active {
         contract.last_interest_update = contract.created_at;
         return Ok(());
@@ -60,6 +84,60 @@ pub fn process_automatic_interest(contract: &mut DebtContract, current_time: i64
 
     contract.last_interest_update = current_time;
     Ok(())
+}
+
+pub fn calculate_standby_fee(
+    undrawn_amount: u64,
+    standby_fee_rate: u64,
+    time_elapsed: i64,
+) -> Result<u64> {
+    if time_elapsed <= 0 || undrawn_amount == 0 || standby_fee_rate == 0 {
+        return Ok(0);
+    }
+
+    let standby_fee = (undrawn_amount as u128)
+        .checked_mul(standby_fee_rate as u128)
+        .and_then(|value| value.checked_mul(time_elapsed as u128))
+        .and_then(|value| value.checked_div(365 * 24 * 60 * 60 * 10_000))
+        .ok_or(StendarError::InvalidPaymentAmount)?;
+
+    safe_u128_to_u64(standby_fee)
+}
+
+pub fn checkpoint_standby_fees(contract: &mut DebtContract, current_time: i64) -> Result<()> {
+    if !contract.is_revolving {
+        return Ok(());
+    }
+    if contract.last_standby_fee_update == 0 {
+        contract.last_standby_fee_update = current_time;
+        return Ok(());
+    }
+
+    let elapsed = current_time
+        .checked_sub(contract.last_standby_fee_update)
+        .ok_or(StendarError::ArithmeticOverflow)?;
+    if elapsed <= 0 {
+        return Ok(());
+    }
+
+    let undrawn_amount = contract.credit_limit.saturating_sub(contract.drawn_amount);
+    let accrued =
+        calculate_standby_fee(undrawn_amount, contract.standby_fee_rate as u64, elapsed)?;
+    if accrued > 0 {
+        contract.accrued_standby_fees = contract
+            .accrued_standby_fees
+            .checked_add(accrued)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+    }
+    contract.last_standby_fee_update = current_time;
+    Ok(())
+}
+
+pub fn check_revolving_completion(contract: &DebtContract) -> bool {
+    contract.revolving_closed
+        && contract.drawn_amount == 0
+        && contract.accrued_interest == 0
+        && contract.accrued_standby_fees == 0
 }
 
 pub fn process_scheduled_principal_payments(
@@ -211,6 +289,16 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            is_revolving: false,
+            credit_limit: 0,
+            drawn_amount: 0,
+            available_amount: 0,
+            standby_fee_rate: 0,
+            accrued_standby_fees: 0,
+            last_standby_fee_update: 0,
+            total_draws: 0,
+            total_standby_fees_paid: 0,
+            revolving_closed: false,
             _reserved: [0u8; RESERVED_TAIL_BYTES],
         }
     }
@@ -228,6 +316,23 @@ mod tests {
         process_automatic_interest(&mut contract, current_time).expect("accrual should succeed");
 
         assert_eq!(contract.outstanding_balance, 3_000_000);
+    }
+
+    #[test]
+    fn revolving_interest_accrues_on_drawn_amount_to_accrued_interest() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.drawn_amount = 500_000;
+        contract.outstanding_balance = 500_000;
+        contract.accrued_interest = 0;
+        contract.last_interest_update = 1;
+        contract.interest_rate = 1_000; // 10% APR
+
+        let one_year_later = 365 * 24 * 60 * 60 + 1;
+        process_automatic_interest(&mut contract, one_year_later).expect("accrual should succeed");
+
+        assert_eq!(contract.accrued_interest, 50_000);
+        assert_eq!(contract.outstanding_balance, 500_000);
     }
 
     #[test]
@@ -264,5 +369,45 @@ mod tests {
 
         assert_eq!(contract.total_principal_paid, 100);
         assert_eq!(contract.outstanding_balance, 0);
+    }
+
+    #[test]
+    fn calculate_standby_fee_matches_expected_formula() {
+        let undrawn = 1_000_000u64;
+        let rate_bps = 200u64; // 2% APR
+        let elapsed = 365 * 24 * 60 * 60;
+        let fee = calculate_standby_fee(undrawn, rate_bps, elapsed).expect("fee should compute");
+        assert_eq!(fee, 20_000);
+    }
+
+    #[test]
+    fn checkpoint_standby_fees_accrues_and_updates_timestamp() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.credit_limit = 1_000_000;
+        contract.drawn_amount = 250_000;
+        contract.standby_fee_rate = 200; // 2%
+        contract.last_standby_fee_update = 1;
+
+        let one_year_later = 365 * 24 * 60 * 60 + 1;
+        checkpoint_standby_fees(&mut contract, one_year_later).expect("checkpoint succeeds");
+
+        // 750_000 * 2% = 15_000
+        assert_eq!(contract.accrued_standby_fees, 15_000);
+        assert_eq!(contract.last_standby_fee_update, one_year_later);
+    }
+
+    #[test]
+    fn revolving_completion_requires_zero_drawn_and_fees() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.revolving_closed = true;
+        contract.drawn_amount = 0;
+        contract.accrued_interest = 0;
+        contract.accrued_standby_fees = 0;
+        assert!(check_revolving_completion(&contract));
+
+        contract.accrued_standby_fees = 1;
+        assert!(!check_revolving_completion(&contract));
     }
 }

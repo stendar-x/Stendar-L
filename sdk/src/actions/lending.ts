@@ -5,16 +5,24 @@ import {
   ApproveFunderRequest,
   CancelContractRequest,
   ClaimFromEscrowRequest,
+  CloseRevolvingFacilityRequest,
   ContractCreationRequest,
   ContributeRequest,
+  DirectCloseRevolvingFacilityInstructionRequest,
+  DirectDistributeStandbyFeesInstructionRequest,
+  DirectDrawFromRevolvingInstructionRequest,
   DirectApproveFunderInstructionRequest,
   DirectCancelContractInstructionRequest,
   DirectClaimFromEscrowInstructionRequest,
   DirectContributeInstructionRequest,
   DirectMakePaymentInstructionRequest,
+  DirectRepayRevolvingInstructionRequest,
   DirectRefundLenderInstructionRequest,
   DirectWithdrawContributionInstructionRequest,
+  DistributeStandbyFeesRequest,
+  DrawFromRevolvingRequest,
   MakePaymentWithDistributionRequest,
+  RepayRevolvingRequest,
   RefundLenderRequest,
   StendarClientMode,
   TransactionBuildResponse,
@@ -151,6 +159,49 @@ export class LendingActions {
     const contractAddress = validateSolanaAddress(request.contractAddress, 'contractAddress');
     return this.postTransactionBuild(
       `/api/contracts/${contractAddress}/close-listing`,
+      request
+    );
+  }
+
+  async drawFromRevolvingTransaction(
+    request: DrawFromRevolvingRequest | DirectDrawFromRevolvingInstructionRequest
+  ): Promise<TransactionBuildResponse | TransactionInstruction> {
+    if (this.mode === 'direct') {
+      return this.requireProgram().drawFromRevolving(request);
+    }
+    const contractAddress = validateSolanaAddress(request.contractAddress, 'contractAddress');
+    return this.postTransactionBuild(`/api/contracts/${contractAddress}/draw-revolving`, request);
+  }
+
+  async repayRevolvingTransaction(
+    request: RepayRevolvingRequest | DirectRepayRevolvingInstructionRequest
+  ): Promise<TransactionBuildResponse | TransactionInstruction> {
+    if (this.mode === 'direct') {
+      return this.requireProgram().repayRevolving(request);
+    }
+    const contractAddress = validateSolanaAddress(request.contractAddress, 'contractAddress');
+    return this.postTransactionBuild(`/api/contracts/${contractAddress}/repay-revolving`, request);
+  }
+
+  async closeRevolvingFacilityTransaction(
+    request: CloseRevolvingFacilityRequest | DirectCloseRevolvingFacilityInstructionRequest
+  ): Promise<TransactionBuildResponse | TransactionInstruction> {
+    if (this.mode === 'direct') {
+      return this.requireProgram().closeRevolvingFacility(request);
+    }
+    const contractAddress = validateSolanaAddress(request.contractAddress, 'contractAddress');
+    return this.postTransactionBuild(`/api/contracts/${contractAddress}/close-revolving`, request);
+  }
+
+  async distributeStandbyFeesTransaction(
+    request: DistributeStandbyFeesRequest | DirectDistributeStandbyFeesInstructionRequest
+  ): Promise<TransactionBuildResponse | TransactionInstruction> {
+    if (this.mode === 'direct') {
+      return this.requireProgram().distributeStandbyFees(request);
+    }
+    const contractAddress = validateSolanaAddress(request.contractAddress, 'contractAddress');
+    return this.postTransactionBuild(
+      `/api/contracts/${contractAddress}/distribute-standby-fees`,
       request
     );
   }

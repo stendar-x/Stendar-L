@@ -76,6 +76,8 @@ export interface ContractCreationRequest {
   amount: number;
   interestRate: number;
   loanType: 'demand' | 'committed';
+  isRevolving?: boolean;
+  standbyFeeRate?: number | null;
   partialFundingEnabled?: boolean;
   allowPartialFill?: boolean;
   minPartialFillBps?: number | null;
@@ -147,6 +149,50 @@ export interface MakePaymentWithDistributionRequest {
   contributionEscrowAccounts: Array<{
     contributionAddress: string;
     escrowAddress: string;
+  }>;
+}
+
+export interface DrawFromRevolvingRequest {
+  contractAddress: string;
+  borrowerAddress: string;
+  amount: number;
+  borrowerUsdcAccount: string;
+  contractUsdcAccount: string;
+  contributionEscrowAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+  }>;
+  collateralRegistryAddress?: string | null;
+  priceFeedAddress?: string | null;
+}
+
+export interface RepayRevolvingRequest {
+  contractAddress: string;
+  borrowerAddress: string;
+  amount: number;
+  borrowerUsdcAccount: string;
+  contractUsdcAccount: string;
+  contributionEscrowAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+  }>;
+}
+
+export interface CloseRevolvingFacilityRequest {
+  contractAddress: string;
+  borrowerAddress: string;
+  borrowerUsdcAccount: string;
+  treasuryUsdcAccount: string;
+}
+
+export interface DistributeStandbyFeesRequest {
+  contractAddress: string;
+  botAuthorityAddress: string;
+  contractUsdcAccount: string;
+  standbyDistributionAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+    escrowUsdcAccount: string;
   }>;
 }
 
@@ -477,6 +523,58 @@ export interface DirectMakePaymentInstructionRequest {
     contributionAddress: string;
     escrowAddress: string;
   }>;
+}
+
+export interface DirectDrawFromRevolvingInstructionRequest {
+  contractAddress: string;
+  borrowerAddress: string;
+  amount: string | number | bigint;
+  borrowerUsdcAccount: string;
+  contractUsdcAccount: string;
+  contributionEscrowAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+  }>;
+  stateAddress?: string;
+  treasuryAddress?: string;
+  collateralRegistryAddress?: string | null;
+  priceFeedAddress?: string | null;
+}
+
+export interface DirectRepayRevolvingInstructionRequest {
+  contractAddress: string;
+  borrowerAddress: string;
+  amount: string | number | bigint;
+  borrowerUsdcAccount: string;
+  contractUsdcAccount: string;
+  contributionEscrowAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+  }>;
+  stateAddress?: string;
+  treasuryAddress?: string;
+}
+
+export interface DirectCloseRevolvingFacilityInstructionRequest {
+  contractAddress: string;
+  borrowerAddress: string;
+  borrowerUsdcAccount: string;
+  treasuryUsdcAccount: string;
+  stateAddress?: string;
+  treasuryAddress?: string;
+}
+
+export interface DirectDistributeStandbyFeesInstructionRequest {
+  contractAddress: string;
+  botAuthorityAddress: string;
+  contractUsdcAccount: string;
+  standbyDistributionAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+    escrowUsdcAccount: string;
+  }>;
+  stateAddress?: string;
+  treasuryAddress?: string;
 }
 
 export interface DirectClaimFromEscrowInstructionRequest {

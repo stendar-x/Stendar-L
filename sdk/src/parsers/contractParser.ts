@@ -27,7 +27,7 @@ import type {
 } from './types';
 
 const CURRENT_LAYOUT_LEN = 957;
-const RESERVED_TAIL_BYTES = 96;
+const RESERVED_TAIL_BYTES = 38;
 const MAX_REASONABLE_CONTRIBUTIONS = 128;
 
 function mapEnum<T extends string>(mapping: Record<number, string>, value: number): T | 'Unknown' {
@@ -215,6 +215,36 @@ function parseCurrentLayout(data: Buffer): ParsedContractAccount {
   const recallRequestedBy = readPubkey(data, offset);
   offset += 32;
 
+  const isRevolving = readBool(data, offset);
+  offset += 1;
+
+  const creditLimitRaw = readU64(data, offset);
+  offset += 8;
+
+  const drawnAmountRaw = readU64(data, offset);
+  offset += 8;
+
+  const availableAmountRaw = readU64(data, offset);
+  offset += 8;
+
+  const standbyFeeRate = readU32(data, offset);
+  offset += 4;
+
+  const accruedStandbyFeesRaw = readU64(data, offset);
+  offset += 8;
+
+  const lastStandbyFeeUpdate = readI64(data, offset);
+  offset += 8;
+
+  const totalDraws = readU32(data, offset);
+  offset += 4;
+
+  const totalStandbyFeesPaidRaw = readU64(data, offset);
+  offset += 8;
+
+  const revolvingClosed = readBool(data, offset);
+  offset += 1;
+
   const reservedTail = data.subarray(offset, offset + RESERVED_TAIL_BYTES);
   if (reservedTail.length !== RESERVED_TAIL_BYTES) {
     throw new RangeError('DebtContract tail reserved bytes are truncated');
@@ -280,6 +310,21 @@ function parseCurrentLayout(data: Buffer): ParsedContractAccount {
     recallRequested,
     recallRequestedAt: recallRequestedAt.toString(),
     recallRequestedBy,
+    isRevolving,
+    creditLimit: asUiUsdc(creditLimitRaw),
+    creditLimitRaw: creditLimitRaw.toString(),
+    drawnAmount: asUiUsdc(drawnAmountRaw),
+    drawnAmountRaw: drawnAmountRaw.toString(),
+    availableAmount: asUiUsdc(availableAmountRaw),
+    availableAmountRaw: availableAmountRaw.toString(),
+    standbyFeeRate,
+    accruedStandbyFees: asUiUsdc(accruedStandbyFeesRaw),
+    accruedStandbyFeesRaw: accruedStandbyFeesRaw.toString(),
+    lastStandbyFeeUpdate: lastStandbyFeeUpdate.toString(),
+    totalDraws,
+    totalStandbyFeesPaid: asUiUsdc(totalStandbyFeesPaidRaw),
+    totalStandbyFeesPaidRaw: totalStandbyFeesPaidRaw.toString(),
+    revolvingClosed,
   };
 }
 

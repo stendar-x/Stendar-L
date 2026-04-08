@@ -1,6 +1,9 @@
 import { AnchorProvider, BN, Idl, Program } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import {
+  DirectCloseRevolvingFacilityInstructionRequest,
+  DirectDistributeStandbyFeesInstructionRequest,
+  DirectDrawFromRevolvingInstructionRequest,
   DirectApproveFunderInstructionRequest,
   DirectCancelContractInstructionRequest,
   DirectCancelTermProposalInstructionRequest,
@@ -12,6 +15,7 @@ import {
   DirectMakePaymentInstructionRequest,
   DirectProcessProposalRecallInstructionRequest,
   DirectProgramConfig,
+  DirectRepayRevolvingInstructionRequest,
   DirectProposePoolChangesInstructionRequest,
   DirectUpdateOperatorNameInstructionRequest,
   DirectUpdatePoolNameInstructionRequest,
@@ -122,6 +126,12 @@ export interface ValidatedContributionEscrowPair {
   escrowPubkey: PublicKey;
 }
 
+export interface ValidatedStandbyDistributionAccount {
+  contributionPubkey: PublicKey;
+  escrowPubkey: PublicKey;
+  escrowUsdcPubkey: PublicKey;
+}
+
 export function validateContributionEscrowPairs(
   contributionEscrowAccounts: Array<{ contributionAddress: string; escrowAddress: string }>
 ): ValidatedContributionEscrowPair[] {
@@ -145,6 +155,45 @@ export function validateContributionEscrowPairs(
     return {
       contributionPubkey,
       escrowPubkey,
+    };
+  });
+}
+
+export function validateStandbyDistributionAccounts(
+  standbyDistributionAccounts: Array<{
+    contributionAddress: string;
+    escrowAddress: string;
+    escrowUsdcAccount: string;
+  }>
+): ValidatedStandbyDistributionAccount[] {
+  if (standbyDistributionAccounts.length === 0) {
+    throw new Error('standbyDistributionAccounts must include at least one contribution/escrow/ATA tuple');
+  }
+
+  const seenAddresses = new Set<string>();
+  return standbyDistributionAccounts.map((entry) => {
+    const contributionPubkey = new PublicKey(entry.contributionAddress);
+    const escrowPubkey = new PublicKey(entry.escrowAddress);
+    const escrowUsdcPubkey = new PublicKey(entry.escrowUsdcAccount);
+
+    const normalizedContribution = contributionPubkey.toBase58();
+    const normalizedEscrow = escrowPubkey.toBase58();
+    const normalizedEscrowUsdc = escrowUsdcPubkey.toBase58();
+    if (
+      seenAddresses.has(normalizedContribution) ||
+      seenAddresses.has(normalizedEscrow) ||
+      seenAddresses.has(normalizedEscrowUsdc)
+    ) {
+      throw new Error('Duplicate contribution, escrow, or escrow ATA account detected');
+    }
+    seenAddresses.add(normalizedContribution);
+    seenAddresses.add(normalizedEscrow);
+    seenAddresses.add(normalizedEscrowUsdc);
+
+    return {
+      contributionPubkey,
+      escrowPubkey,
+      escrowUsdcPubkey,
     };
   });
 }
@@ -393,6 +442,150 @@ export class StendarProgramClient {
         borrowerCollateralAccount: this.optionalPublicKey(request.borrowerCollateralAccount),
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+      },
+      remainingAccounts
+    );
+  }
+
+  async drawFromRevolving(request: DirectDrawFromRevolvingInstructionRequest): Promise<TransactionInstruction> {
+    const validatedPairs = validateContributionEscrowPairs(request.contributionEscrowAccounts);
+    const remainingAccounts = validatedPairs.flatMap((entry) => [
+      {
+        pubkey: entry.contributionPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: entry.escrowPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+    ]);
+    const state = request.stateAddress
+      ? new PublicKey(request.stateAddress)
+      : deriveGlobalStatePda(this.programId.toBase58());
+    const treasury = request.treasuryAddress
+      ? new PublicKey(request.treasuryAddress)
+      : deriveTreasuryPda(this.programId.toBase58());
+
+    return this.buildInstruction(
+      'drawFromRevolving',
+      [toValidatedU64Bn(request.amount, 'amount')],
+      {
+        contract: new PublicKey(request.contractAddress),
+        state,
+        treasury,
+        borrower: new PublicKey(request.borrowerAddress),
+        borrowerUsdcAccount: new PublicKey(request.borrowerUsdcAccount),
+        contractUsdcAccount: new PublicKey(request.contractUsdcAccount),
+        collateralRegistry: this.optionalPublicKey(request.collateralRegistryAddress),
+        priceFeedAccount: this.optionalPublicKey(request.priceFeedAddress),
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      remainingAccounts
+    );
+  }
+
+  async repayRevolving(request: DirectRepayRevolvingInstructionRequest): Promise<TransactionInstruction> {
+    const validatedPairs = validateContributionEscrowPairs(request.contributionEscrowAccounts);
+    const remainingAccounts = validatedPairs.flatMap((entry) => [
+      {
+        pubkey: entry.contributionPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: entry.escrowPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+    ]);
+    const state = request.stateAddress
+      ? new PublicKey(request.stateAddress)
+      : deriveGlobalStatePda(this.programId.toBase58());
+    const treasury = request.treasuryAddress
+      ? new PublicKey(request.treasuryAddress)
+      : deriveTreasuryPda(this.programId.toBase58());
+
+    return this.buildInstruction(
+      'repayRevolving',
+      [toValidatedU64Bn(request.amount, 'amount')],
+      {
+        contract: new PublicKey(request.contractAddress),
+        state,
+        treasury,
+        borrower: new PublicKey(request.borrowerAddress),
+        borrowerUsdcAccount: new PublicKey(request.borrowerUsdcAccount),
+        contractUsdcAccount: new PublicKey(request.contractUsdcAccount),
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      remainingAccounts
+    );
+  }
+
+  async closeRevolvingFacility(
+    request: DirectCloseRevolvingFacilityInstructionRequest
+  ): Promise<TransactionInstruction> {
+    const state = request.stateAddress
+      ? new PublicKey(request.stateAddress)
+      : deriveGlobalStatePda(this.programId.toBase58());
+    const treasury = request.treasuryAddress
+      ? new PublicKey(request.treasuryAddress)
+      : deriveTreasuryPda(this.programId.toBase58());
+
+    return this.buildInstruction(
+      'closeRevolvingFacility',
+      [],
+      {
+        contract: new PublicKey(request.contractAddress),
+        state,
+        treasury,
+        borrower: new PublicKey(request.borrowerAddress),
+        borrowerUsdcAccount: new PublicKey(request.borrowerUsdcAccount),
+        treasuryUsdcAccount: new PublicKey(request.treasuryUsdcAccount),
+        tokenProgram: TOKEN_PROGRAM_ID,
+      }
+    );
+  }
+
+  async distributeStandbyFees(
+    request: DirectDistributeStandbyFeesInstructionRequest
+  ): Promise<TransactionInstruction> {
+    const validatedAccounts = validateStandbyDistributionAccounts(request.standbyDistributionAccounts);
+    const remainingAccounts = validatedAccounts.flatMap((entry) => [
+      {
+        pubkey: entry.contributionPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: entry.escrowPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: entry.escrowUsdcPubkey,
+        isSigner: false,
+        isWritable: true,
+      },
+    ]);
+    const state = request.stateAddress
+      ? new PublicKey(request.stateAddress)
+      : deriveGlobalStatePda(this.programId.toBase58());
+    const treasury = request.treasuryAddress
+      ? new PublicKey(request.treasuryAddress)
+      : deriveTreasuryPda(this.programId.toBase58());
+
+    return this.buildInstruction(
+      'distributeStandbyFees',
+      [],
+      {
+        contract: new PublicKey(request.contractAddress),
+        state,
+        treasury,
+        botAuthority: new PublicKey(request.botAuthorityAddress),
+        contractUsdcAccount: new PublicKey(request.contractUsdcAccount),
+        tokenProgram: TOKEN_PROGRAM_ID,
       },
       remainingAccounts
     );

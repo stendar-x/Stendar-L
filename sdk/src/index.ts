@@ -76,7 +76,10 @@ export {
 
 export {
   PREPAYMENT_FEE_BPS,
+  EARLY_TERMINATION_FEE_FORMULA,
   calculatePrepaymentFee,
+  calculateStandbyFee,
+  isRevolving,
 } from './utils/fees';
 
 export { stendarIdl } from './idl';

@@ -32,7 +32,7 @@ pub const POOL_DEPOSIT_SEED: &[u8] = b"pool_deposit";
 pub const POOL_OPERATOR_SEED: &[u8] = b"pool_operator";
 pub const PENDING_POOL_CHANGE_SEED: &[u8] = b"pending_pool_change";
 pub const CURRENT_ACCOUNT_VERSION: u16 = 1;
-pub const RESERVED_TAIL_BYTES: usize = 96;
+pub const RESERVED_TAIL_BYTES: usize = 38;
 pub const LENDER_CONTRIBUTION_RESERVED_BYTES: usize = 24;
 pub const LENDER_ESCROW_RESERVED_BYTES: usize = 32;
 pub const APPROVED_FUNDER_RESERVED_BYTES: usize = 32;
@@ -211,6 +211,26 @@ pub struct DebtContract {
     pub recall_requested: bool,            // Whether a demand recall is pending
     pub recall_requested_at: i64,          // Recall request timestamp (0 if none)
     pub recall_requested_by: Pubkey,       // Lender who requested recall
+    /// Whether this contract is an active revolving line of credit.
+    pub is_revolving: bool,
+    /// Maximum drawable principal while the facility is open.
+    pub credit_limit: u64,
+    /// Current borrowed principal outstanding on the revolving facility.
+    pub drawn_amount: u64,
+    /// Cached drawable capacity (`credit_limit - drawn_amount` when open).
+    pub available_amount: u64,
+    /// Annual standby-fee rate in basis points charged on undrawn capacity.
+    pub standby_fee_rate: u32,
+    /// Standby fees accrued but not yet distributed.
+    pub accrued_standby_fees: u64,
+    /// Timestamp of the last standby-fee accrual checkpoint.
+    pub last_standby_fee_update: i64,
+    /// Number of successful draw operations.
+    pub total_draws: u32,
+    /// Lifetime total standby fees paid to lenders.
+    pub total_standby_fees_paid: u64,
+    /// Facility closed flag; when true no additional draws are allowed.
+    pub revolving_closed: bool,
     /// Empty tail buffer reserved for future additive changes.
     pub _reserved: [u8; RESERVED_TAIL_BYTES],
 }
@@ -268,6 +288,16 @@ impl DebtContract {
         + 1
         + 8
         + 32
+        + 1
+        + 8
+        + 8
+        + 8
+        + 4
+        + 8
+        + 8
+        + 4
+        + 8
+        + 1
         + RESERVED_TAIL_BYTES;
 
     pub fn increment_proposal_count(&mut self) -> Result<u64> {
@@ -594,6 +624,16 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            is_revolving: false,
+            credit_limit: 0,
+            drawn_amount: 0,
+            available_amount: 0,
+            standby_fee_rate: 0,
+            accrued_standby_fees: 0,
+            last_standby_fee_update: 0,
+            total_draws: 0,
+            total_standby_fees_paid: 0,
+            revolving_closed: false,
             _reserved: [0u8; RESERVED_TAIL_BYTES],
         }
     }

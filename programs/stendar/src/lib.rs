@@ -190,6 +190,8 @@ pub mod stendar {
         partial_funding_enabled: bool,
         allow_partial_fill: bool,
         min_partial_fill_bps: u16,
+        is_revolving: bool,
+        standby_fee_rate: u32,
         distribution_method: DistributionMethod,
         funding_access_mode: FundingAccessMode,
     ) -> Result<()> {
@@ -211,6 +213,8 @@ pub mod stendar {
             partial_funding_enabled,
             allow_partial_fill,
             min_partial_fill_bps,
+            is_revolving,
+            standby_fee_rate,
             distribution_method,
             funding_access_mode,
         )
@@ -230,6 +234,30 @@ pub mod stendar {
 
     pub fn add_collateral(ctx: Context<AddCollateral>, amount: u64) -> Result<()> {
         instructions::add_collateral(ctx, amount)
+    }
+
+    pub fn draw_from_revolving<'info>(
+        ctx: Context<'_, '_, 'info, 'info, DrawFromRevolving<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::draw_from_revolving(ctx, amount)
+    }
+
+    pub fn repay_revolving<'info>(
+        ctx: Context<'_, '_, 'info, 'info, RepayRevolving<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::repay_revolving(ctx, amount)
+    }
+
+    pub fn close_revolving_facility(ctx: Context<CloseRevolvingFacility>) -> Result<()> {
+        instructions::close_revolving_facility(ctx)
+    }
+
+    pub fn distribute_standby_fees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, DistributeStandbyFees<'info>>,
+    ) -> Result<()> {
+        instructions::distribute_standby_fees(ctx)
     }
 
     pub fn update_contract_state(ctx: Context<UpdateContractState>) -> Result<()> {

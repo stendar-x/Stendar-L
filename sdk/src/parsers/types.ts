@@ -82,6 +82,21 @@ export interface ParsedContractAccount {
   recallRequested: boolean | null;
   recallRequestedAt: string | null;
   recallRequestedBy: string | null;
+  isRevolving: boolean;
+  creditLimit: number;
+  creditLimitRaw: string;
+  drawnAmount: number;
+  drawnAmountRaw: string;
+  availableAmount: number;
+  availableAmountRaw: string;
+  standbyFeeRate: number;
+  accruedStandbyFees: number;
+  accruedStandbyFeesRaw: string;
+  lastStandbyFeeUpdate: string;
+  totalDraws: number;
+  totalStandbyFeesPaid: number;
+  totalStandbyFeesPaidRaw: string;
+  revolvingClosed: boolean;
 }
 
 export interface ParsedContributionAccount {

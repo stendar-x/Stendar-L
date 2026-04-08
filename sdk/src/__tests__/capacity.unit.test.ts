@@ -62,6 +62,21 @@ const BASE_CONTRACT: ParsedContractAccount = {
   recallRequested: null,
   recallRequestedAt: null,
   recallRequestedBy: null,
+  isRevolving: false,
+  creditLimit: 0,
+  creditLimitRaw: '0',
+  drawnAmount: 0,
+  drawnAmountRaw: '0',
+  availableAmount: 0,
+  availableAmountRaw: '0',
+  standbyFeeRate: 0,
+  accruedStandbyFees: 0,
+  accruedStandbyFeesRaw: '0',
+  lastStandbyFeeUpdate: '0',
+  totalDraws: 0,
+  totalStandbyFeesPaid: 0,
+  totalStandbyFeesPaidRaw: '0',
+  revolvingClosed: false,
 };
 
 function buildContract(overrides: Partial<ParsedContractAccount> = {}): ParsedContractAccount {
