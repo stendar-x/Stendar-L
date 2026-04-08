@@ -157,6 +157,66 @@ function buildContractCurrentFullBuffer(): Buffer {
   return w.toBuffer(879);
 }
 
+function buildContractMigratedFullBuffer(): Buffer {
+  const w = new BufferWriter();
+  const reserved = Buffer.alloc(44);
+  const migrationReserve = Buffer.alloc(128, 0xab);
+  reserved[0] = 1; // AllowlistOnly
+  reserved[1] = 1; // hasActiveProposal
+  reserved.writeBigUInt64LE(7n, 2);
+
+  w.writeBytes(DISCRIMINATORS.DEBT_CONTRACT);
+  w.writePubkey(makePubkey(11)); // borrower
+  w.writeU64(42n); // contract_seed
+  w.writeU64(1_000_000n); // target_amount
+  w.writeU64(800_000n); // funded_amount
+  w.writeU32(750); // interest_rate (u32)
+  w.writeU32(180); // term_days
+  w.writeU64(5_000_000_000n); // collateral_amount
+  w.writeU8(1); // loan_type: Committed
+  w.writeU64(12_000n); // ltv_ratio
+  w.writeU8(0); // interest_payment_type: OutstandingBalance
+  w.writeU8(1); // principal_payment_type: NoFixedPayment
+  w.writeU8(3); // interest_frequency: Monthly
+  w.writeOptionU8(2); // principal_frequency: BiWeekly
+  w.writeI64(1_700_000_000n); // created_at
+  w.writeU8(2); // status: Active
+  w.writeU32(2); // num_contributions
+  w.writeU64(790_000n); // outstanding_balance
+  w.writeU64(10_000n); // accrued_interest
+  w.writeI64(1_700_010_000n); // last_interest_update
+  w.writeI64(1_700_020_000n); // last_principal_payment
+  w.writeU64(50_000n); // total_principal_paid
+  w.writePubkeyVec([makePubkey(31), makePubkey(32)]); // contributions vec
+  w.writeI64(1_700_030_000n); // last_bot_update
+  w.writeI64(1_700_090_000n); // next_interest_payment_due
+  w.writeI64(1_700_090_000n); // next_principal_payment_due
+  w.writeU64(5n); // bot_operation_count
+  w.writeU16(14); // max_lenders
+  w.writeU8(1); // partial_funding_flag
+  w.writeI64(1_800_000_000n); // expires_at
+  w.writeBool(true); // allow_partial_fill
+  w.writeU16(5_000); // min_partial_fill_bps
+  w.writeU64(1_000n); // listing_fee_paid
+  w.writeBytes(reserved);
+  w.writeU16(2); // account_version
+
+  // Appended fields
+  w.writeU8(2); // contract_version
+  w.writePubkey(makePubkey(41)); // collateral_mint
+  w.writePubkey(makePubkey(42)); // collateral_token_account
+  w.writeU64(2_100_000n); // collateral_value_at_creation
+  w.writeU16(11_000); // ltv_floor_bps
+  w.writePubkey(makePubkey(43)); // loan_mint
+  w.writePubkey(makePubkey(44)); // loan_token_account
+  w.writeBool(true); // recall_requested
+  w.writeI64(1_700_100_000n); // recall_requested_at
+  w.writePubkey(makePubkey(45)); // recall_requested_by
+  w.writeBytes(migrationReserve);
+
+  return w.toBuffer(1007);
+}
+
 function buildContractCurrentBaseBuffer(): Buffer {
   const w = new BufferWriter();
   const reserved = Buffer.alloc(44);
@@ -385,15 +445,24 @@ test('enum maps include all expected variants', () => {
 });
 
 test('parseContractAccount handles current full and base-only layouts', () => {
-  const current = parseContractAccount(buildContractCurrentFullBuffer());
-  assert.ok(current);
-  assert.equal(current?.layout, 'current');
-  assert.equal(current?.status, 'Active');
-  assert.equal(current?.loanType, 'Committed');
-  assert.equal(current?.fundingAccessMode, 'AllowlistOnly');
-  assert.equal(current?.hasActiveProposal, true);
-  assert.equal(current?.proposalCount, '7');
-  assert.equal(current?.contractVersion, 2);
+  const legacy = parseContractAccount(buildContractCurrentFullBuffer());
+  assert.ok(legacy);
+  assert.equal(legacy?.layout, 'current');
+  assert.equal(legacy?.status, 'Active');
+  assert.equal(legacy?.loanType, 'Committed');
+  assert.equal(legacy?.fundingAccessMode, 'AllowlistOnly');
+  assert.equal(legacy?.hasActiveProposal, true);
+  assert.equal(legacy?.proposalCount, '7');
+  assert.equal(legacy?.contractVersion, 2);
+  assert.equal(legacy?.accountVersion, 1);
+  assert.equal(legacy?.migrationReserveHex, undefined);
+
+  const migrated = parseContractAccount(buildContractMigratedFullBuffer());
+  assert.ok(migrated);
+  assert.equal(migrated?.layout, 'current');
+  assert.equal(migrated?.accountVersion, 2);
+  assert.equal(migrated?.migrationReserveHex?.length, 256);
+  assert.equal(migrated?.migrationReserveHex?.startsWith('ab'), true);
 
   const currentBase = parseContractAccount(buildContractCurrentBaseBuffer());
   assert.ok(currentBase);

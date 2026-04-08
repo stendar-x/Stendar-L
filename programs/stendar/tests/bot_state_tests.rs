@@ -220,5 +220,6 @@ fn create_mock_contract(
         recall_requested: false,
         recall_requested_at: 0,
         recall_requested_by: Pubkey::default(),
+        _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
     }
 }

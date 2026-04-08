@@ -4639,6 +4639,35 @@
       ]
     },
     {
+      "name": "migrate_contract",
+      "discriminator": [
+        130,
+        38,
+        227,
+        224,
+        91,
+        79,
+        163,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "contract",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "operator_return_deposit",
       "discriminator": [
         34,
@@ -7647,6 +7676,19 @@
       ]
     },
     {
+      "name": "ContractMigrated",
+      "discriminator": [
+        217,
+        117,
+        17,
+        36,
+        49,
+        173,
+        236,
+        58
+      ]
+    },
+    {
       "name": "ContributionWithdrawn",
       "discriminator": [
         124,
@@ -8398,6 +8440,11 @@
       "code": 6131,
       "name": "PoolNotPausedForReturn",
       "msg": "Pool must be paused before returning deposits"
+    },
+    {
+      "code": 6132,
+      "name": "AlreadyMigrated",
+      "msg": "Account is already on the latest layout version"
     }
   ],
   "types": [
@@ -8609,6 +8656,34 @@
           {
             "name": "contract",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ContractMigrated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "contract",
+            "type": "pubkey"
+          },
+          {
+            "name": "from_version",
+            "type": "u16"
+          },
+          {
+            "name": "to_version",
+            "type": "u16"
+          },
+          {
+            "name": "old_len",
+            "type": "u32"
+          },
+          {
+            "name": "new_len",
+            "type": "u32"
           }
         ]
       }
@@ -8962,6 +9037,18 @@
           {
             "name": "recall_requested_by",
             "type": "pubkey"
+          },
+          {
+            "name": "_migration_reserve",
+            "docs": [
+              "Reserved tail space for future additive migrations."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
           }
         ]
       }

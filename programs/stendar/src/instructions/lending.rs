@@ -1,13 +1,14 @@
 use crate::contexts::*;
 use crate::errors::StendarError;
 use crate::state::{
-    ApprovedFunder, ContractCreated, ContractFunded, ContractOperationsFund, ContractStatus,
-    ContributionWithdrawn, DebtContract, DistributionMethod, FundingAccessMode,
+    ApprovedFunder, ContractCreated, ContractFunded, ContractMigrated, ContractOperationsFund,
+    ContractStatus, ContributionWithdrawn, DebtContract, DistributionMethod, FundingAccessMode,
     InterestPaymentType, LenderContribution, LenderEscrow, LoanType, PaymentFrequency,
     PrincipalPaymentType, State, TestClockOffset, APPROVED_FUNDER_RESERVED_BYTES,
     CURRENT_ACCOUNT_VERSION, DEBT_CONTRACT_RESERVED_BYTES, DEMAND_LOAN_MIN_FLOOR_BPS,
     LENDER_CONTRIBUTION_RESERVED_BYTES, LENDER_ESCROW_RESERVED_BYTES, LIQUIDATION_FEE_BPS,
-    OPERATIONS_FUND_SEED, PARTIAL_LIQUIDATION_CAP_BPS, RECALL_FEE_BPS, RECALL_GRACE_PERIOD_SECONDS,
+    MIGRATION_RESERVE_BYTES, OPERATIONS_FUND_SEED, PARTIAL_LIQUIDATION_CAP_BPS, RECALL_FEE_BPS,
+    RECALL_GRACE_PERIOD_SECONDS,
 };
 use crate::utils::{
     calculate_collateral_to_seize, calculate_collateral_value_in_usdc, calculate_fee_tenths_bps,
@@ -25,6 +26,9 @@ const PARTIAL_FUNDING_ENABLED_FLAG: u8 = 1;
 const PARTIAL_FUNDING_DISABLED_FLAG: u8 = 2;
 const LISTING_EXPIRATION_SECONDS: i64 = 7 * 24 * 60 * 60;
 const WITHDRAWAL_COOLDOWN_SECONDS: i64 = 60;
+// Legacy v1 contract allocation (pre-migration reserve tail).
+const LEGACY_DEBT_CONTRACT_LEN: usize = 879;
+const DEBT_CONTRACT_VERSION_OFFSET: usize = DebtContract::BASE_LAYOUT_LEN - core::mem::size_of::<u16>();
 
 pub(crate) fn with_test_clock_offset(
     base_time: i64,
@@ -395,6 +399,110 @@ pub fn initialize_state(ctx: Context<Initialize>) -> Result<()> {
     Ok(())
 }
 
+pub fn migrate_contract(ctx: Context<MigrateContract>) -> Result<()> {
+    let contract_info = &ctx.accounts.contract;
+    require!(
+        contract_info.owner == ctx.program_id,
+        StendarError::InvalidContractReference
+    );
+
+    let current_len = contract_info.data_len();
+    require!(
+        current_len == LEGACY_DEBT_CONTRACT_LEN || current_len == DebtContract::LEN,
+        StendarError::InvalidContractReference
+    );
+
+    let (borrower, contract_seed, account_version) = {
+        let data = contract_info.try_borrow_data()?;
+        require!(
+            data.len() >= DebtContract::DISCRIMINATOR.len()
+                && &data[..DebtContract::DISCRIMINATOR.len()] == DebtContract::DISCRIMINATOR,
+            StendarError::InvalidContractReference
+        );
+
+        let borrower_slice: [u8; 32] = data[8..40]
+            .try_into()
+            .map_err(|_| error!(StendarError::InvalidContractReference))?;
+        let borrower = Pubkey::new_from_array(borrower_slice);
+
+        let contract_seed_slice: [u8; 8] = data[40..48]
+            .try_into()
+            .map_err(|_| error!(StendarError::InvalidContractReference))?;
+        let contract_seed = u64::from_le_bytes(contract_seed_slice);
+
+        let version_slice: [u8; 2] = data
+            [DEBT_CONTRACT_VERSION_OFFSET..DEBT_CONTRACT_VERSION_OFFSET + core::mem::size_of::<u16>()]
+            .try_into()
+            .map_err(|_| error!(StendarError::InvalidContractReference))?;
+        let account_version = u16::from_le_bytes(version_slice);
+        (borrower, contract_seed, account_version)
+    };
+
+    require!(
+        account_version == CURRENT_ACCOUNT_VERSION - 1,
+        StendarError::AccountNeedsMigration
+    );
+
+    let contract_seed_bytes = contract_seed.to_le_bytes();
+    let (expected_contract_pda, _) = Pubkey::find_program_address(
+        &[b"debt_contract", borrower.as_ref(), &contract_seed_bytes],
+        ctx.program_id,
+    );
+    require!(
+        expected_contract_pda == contract_info.key(),
+        StendarError::InvalidContractReference
+    );
+
+    if current_len == DebtContract::LEN {
+        require!(
+            account_version == CURRENT_ACCOUNT_VERSION,
+            StendarError::InvalidContractReference
+        );
+        return Err(StendarError::AlreadyMigrated.into());
+    }
+
+    let rent = Rent::get()?;
+    let required_lamports = rent.minimum_balance(DebtContract::LEN);
+    let existing_lamports = contract_info.lamports();
+    if required_lamports > existing_lamports {
+        let rent_delta = required_lamports
+            .checked_sub(existing_lamports)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+        let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.payer.key(),
+            contract_info.key,
+            rent_delta,
+        );
+        anchor_lang::solana_program::program::invoke(
+            &transfer_instruction,
+            &[
+                ctx.accounts.payer.to_account_info(),
+                contract_info.clone(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+    }
+
+    contract_info.realloc(DebtContract::LEN, false)?;
+
+    {
+        let mut data = contract_info.try_borrow_mut_data()?;
+        data[current_len..DebtContract::LEN].fill(0);
+        data[DEBT_CONTRACT_VERSION_OFFSET..DEBT_CONTRACT_VERSION_OFFSET + core::mem::size_of::<u16>()]
+            .copy_from_slice(&CURRENT_ACCOUNT_VERSION.to_le_bytes());
+    }
+
+    emit!(ContractMigrated {
+        contract: contract_info.key(),
+        from_version: account_version,
+        to_version: CURRENT_ACCOUNT_VERSION,
+        old_len: current_len as u32,
+        new_len: DebtContract::LEN as u32,
+    });
+
+    Ok(())
+}
+
 pub fn create_debt_contract(
     ctx: Context<CreateDebtContract>,
     contract_seed: u64,
@@ -648,6 +756,7 @@ pub fn create_debt_contract(
     contract.recall_requested = false;
     contract.recall_requested_at = 0;
     contract.recall_requested_by = Pubkey::default();
+    contract._migration_reserve = [0u8; MIGRATION_RESERVE_BYTES];
     contract._reserved = [0u8; DEBT_CONTRACT_RESERVED_BYTES];
     contract.set_funding_access_mode(funding_access_mode);
     contract.account_version = CURRENT_ACCOUNT_VERSION;
@@ -3512,7 +3621,7 @@ mod tests {
     use crate::errors::StendarError;
     use crate::state::{
         ContractStatus, InterestPaymentType, LoanType, PaymentFrequency, PrincipalPaymentType,
-        State,
+        State, MIGRATION_RESERVE_BYTES,
     };
     use anchor_lang::error::Error;
 
@@ -3569,6 +3678,7 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
             _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
             account_version: CURRENT_ACCOUNT_VERSION,
         }

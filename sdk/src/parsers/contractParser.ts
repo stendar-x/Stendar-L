@@ -26,10 +26,12 @@ import type {
   ParsedPrincipalPaymentType,
 } from './types';
 
-const CURRENT_FULL_LAYOUT_LEN = 879;
+const LEGACY_FULL_LAYOUT_LEN = 879;
+const CURRENT_FULL_LAYOUT_LEN = 1007;
 const CURRENT_BASE_LAYOUT_LEN = 699;
-const APPENDED_LAYOUT_LEN = CURRENT_FULL_LAYOUT_LEN - CURRENT_BASE_LAYOUT_LEN;
+const APPENDED_LAYOUT_LEN = LEGACY_FULL_LAYOUT_LEN - CURRENT_BASE_LAYOUT_LEN;
 const DEBT_CONTRACT_RESERVED_BYTES = 44;
+const MIGRATION_RESERVE_BYTES = 128;
 const MAX_REASONABLE_CONTRIBUTIONS = 128;
 
 type ContractLayoutCandidate = {
@@ -199,10 +201,12 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
   offset += 2;
 
   // Account data fetched from Solana RPC includes allocated size. Rely on known
-  // account allocation length (879 bytes) rather than trailing zero padding after
-  // variable-length vec fields when deciding if appended fields are present.
-  const appendedAvailable = data.length >= CURRENT_FULL_LAYOUT_LEN;
+  // account allocation length (legacy: 879 bytes) rather than trailing zero
+  // padding after variable-length vec fields when deciding if appended fields
+  // are present.
+  const appendedAvailable = data.length >= LEGACY_FULL_LAYOUT_LEN;
   const shouldParseAppended = candidate.allowAppendedFields && appendedAvailable;
+  const migrationReserveAvailable = data.length >= CURRENT_FULL_LAYOUT_LEN;
 
   let contractVersion: number | null = null;
   let collateralMint: string | null = null;
@@ -214,6 +218,7 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
   let recallRequested: boolean | null = null;
   let recallRequestedAt: bigint | null = null;
   let recallRequestedBy: string | null = null;
+  let migrationReserveHex: string | undefined;
 
   if (shouldParseAppended) {
     contractVersion = readU8(data, offset);
@@ -245,6 +250,15 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
 
     recallRequestedBy = readPubkey(data, offset);
     offset += 32;
+
+    if (migrationReserveAvailable) {
+      const migrationReserve = data.subarray(offset, offset + MIGRATION_RESERVE_BYTES);
+      if (migrationReserve.length !== MIGRATION_RESERVE_BYTES) {
+        throw new RangeError('DebtContract migration reserve bytes are truncated');
+      }
+      migrationReserveHex = migrationReserve.toString('hex');
+      offset += MIGRATION_RESERVE_BYTES;
+    }
   }
 
   const layout =
@@ -310,6 +324,7 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
     recallRequested,
     recallRequestedAt: recallRequestedAt?.toString() ?? null,
     recallRequestedBy,
+    ...(migrationReserveHex === undefined ? {} : { migrationReserveHex }),
   };
 }
 

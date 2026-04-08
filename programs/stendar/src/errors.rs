@@ -268,4 +268,6 @@ pub enum StendarError {
     PoolDeploymentRuleViolation,
     #[msg("Pool must be paused before returning deposits")]
     PoolNotPausedForReturn,
+    #[msg("Account is already on the latest layout version")]
+    AlreadyMigrated,
 }
