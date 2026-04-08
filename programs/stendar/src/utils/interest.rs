@@ -158,11 +158,11 @@ mod tests {
     use super::*;
     use crate::state::{
         FundingAccessMode, LoanType, PaymentFrequency, CURRENT_ACCOUNT_VERSION,
-        DEBT_CONTRACT_RESERVED_BYTES, MIGRATION_RESERVE_BYTES,
+        RESERVED_TAIL_BYTES,
     };
 
     fn sample_contract() -> DebtContract {
-        let mut contract = DebtContract {
+        DebtContract {
             borrower: Pubkey::new_unique(),
             contract_seed: 1,
             target_amount: 1_000_000,
@@ -195,8 +195,12 @@ mod tests {
             allow_partial_fill: false,
             min_partial_fill_bps: 0,
             listing_fee_paid: 0,
-            _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
-            account_version: 1,
+            funding_access_mode: FundingAccessMode::Public,
+            has_active_proposal: false,
+            proposal_count: 0,
+            uncollectable_balance: 0,
+            total_prepayment_fees: 0,
+            account_version: CURRENT_ACCOUNT_VERSION,
             contract_version: 2,
             collateral_mint: Pubkey::default(),
             collateral_token_account: Pubkey::default(),
@@ -207,11 +211,8 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
-            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
-        };
-        contract.set_funding_access_mode(FundingAccessMode::Public);
-        contract.account_version = CURRENT_ACCOUNT_VERSION;
-        contract
+            _reserved: [0u8; RESERVED_TAIL_BYTES],
+        }
     }
 
     #[test]

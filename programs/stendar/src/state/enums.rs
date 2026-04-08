@@ -113,22 +113,6 @@ pub enum FundingAccessMode {
     AllowlistOnly,
 }
 
-impl FundingAccessMode {
-    pub fn from_reserved_byte(value: u8) -> Self {
-        match value {
-            1 => FundingAccessMode::AllowlistOnly,
-            _ => FundingAccessMode::Public,
-        }
-    }
-
-    pub fn to_reserved_byte(self) -> u8 {
-        match self {
-            FundingAccessMode::Public => 0,
-            FundingAccessMode::AllowlistOnly => 1,
-        }
-    }
-}
-
 impl PaymentFrequency {
     /// Convert frequency to seconds
     pub fn to_seconds(&self) -> i64 {

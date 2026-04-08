@@ -26,26 +26,9 @@ import type {
   ParsedPrincipalPaymentType,
 } from './types';
 
-const LEGACY_FULL_LAYOUT_LEN = 879;
-const CURRENT_FULL_LAYOUT_LEN = 1007;
-const CURRENT_BASE_LAYOUT_LEN = 699;
-const APPENDED_LAYOUT_LEN = LEGACY_FULL_LAYOUT_LEN - CURRENT_BASE_LAYOUT_LEN;
-const DEBT_CONTRACT_RESERVED_BYTES = 44;
-const MIGRATION_RESERVE_BYTES = 128;
+const CURRENT_LAYOUT_LEN = 957;
+const RESERVED_TAIL_BYTES = 96;
 const MAX_REASONABLE_CONTRIBUTIONS = 128;
-
-type ContractLayoutCandidate = {
-  id: 'current';
-  hasContractSeed: boolean;
-  interestRateEncoding: 'u32' | 'u64';
-  allowAppendedFields: boolean;
-};
-
-type ParsedCandidate = {
-  parsed: ParsedContractAccount;
-  score: number;
-  priority: number;
-};
 
 function mapEnum<T extends string>(mapping: Record<number, string>, value: number): T | 'Unknown' {
   const mapped = mapping[value];
@@ -69,24 +52,18 @@ function readOptionFrequency(data: Buffer, offset: number): { value: ParsedPayme
   };
 }
 
-function decodeFundingAccessMode(reserved: Buffer): 'Public' | 'AllowlistOnly' {
-  return reserved[0] === 1 ? 'AllowlistOnly' : 'Public';
+function decodeFundingAccessMode(value: number): 'Public' | 'AllowlistOnly' {
+  return value === 1 ? 'AllowlistOnly' : 'Public';
 }
 
-function decodeProposalCount(reserved: Buffer): bigint {
-  return reserved.readBigUInt64LE(2);
-}
-
-function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): ParsedContractAccount {
+function parseCurrentLayout(data: Buffer): ParsedContractAccount {
   let offset = 8; // discriminator
 
   const borrower = readPubkey(data, offset);
   offset += 32;
 
-  const contractSeed = candidate.hasContractSeed ? readU64(data, offset) : null;
-  if (candidate.hasContractSeed) {
-    offset += 8;
-  }
+  const contractSeed = readU64(data, offset);
+  offset += 8;
 
   const targetAmountRaw = readU64(data, offset);
   offset += 8;
@@ -94,9 +71,8 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
   const fundedAmountRaw = readU64(data, offset);
   offset += 8;
 
-  const interestRate =
-    candidate.interestRateEncoding === 'u32' ? readU32(data, offset) : Number(readU64(data, offset));
-  offset += candidate.interestRateEncoding === 'u32' ? 4 : 8;
+  const interestRate = readU32(data, offset);
+  offset += 4;
 
   const termDays = readU32(data, offset);
   offset += 4;
@@ -191,87 +167,64 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
   const listingFeePaidRaw = readU64(data, offset);
   offset += 8;
 
-  const reserved = data.subarray(offset, offset + DEBT_CONTRACT_RESERVED_BYTES);
-  if (reserved.length !== DEBT_CONTRACT_RESERVED_BYTES) {
-    throw new RangeError('DebtContract reserved bytes are truncated');
-  }
-  offset += DEBT_CONTRACT_RESERVED_BYTES;
+  const fundingAccessMode = decodeFundingAccessMode(readU8(data, offset));
+  offset += 1;
+
+  const hasActiveProposal = readBool(data, offset);
+  offset += 1;
+
+  const proposalCountRaw = readU64(data, offset);
+  offset += 8;
+
+  const uncollectableBalanceRaw = readU64(data, offset);
+  offset += 8;
+
+  const totalPrepaymentFeesRaw = readU64(data, offset);
+  offset += 8;
 
   const accountVersion = readU16(data, offset);
   offset += 2;
 
-  // Account data fetched from Solana RPC includes allocated size. Rely on known
-  // account allocation length (legacy: 879 bytes) rather than trailing zero
-  // padding after variable-length vec fields when deciding if appended fields
-  // are present.
-  const appendedAvailable = data.length >= LEGACY_FULL_LAYOUT_LEN;
-  const shouldParseAppended = candidate.allowAppendedFields && appendedAvailable;
-  const migrationReserveAvailable = data.length >= CURRENT_FULL_LAYOUT_LEN;
+  const contractVersion = readU8(data, offset);
+  offset += 1;
 
-  let contractVersion: number | null = null;
-  let collateralMint: string | null = null;
-  let collateralTokenAccount: string | null = null;
-  let collateralValueAtCreationRaw: bigint | null = null;
-  let ltvFloorBps: number | null = null;
-  let loanMint: string | null = null;
-  let loanTokenAccount: string | null = null;
-  let recallRequested: boolean | null = null;
-  let recallRequestedAt: bigint | null = null;
-  let recallRequestedBy: string | null = null;
-  let migrationReserveHex: string | undefined;
+  const collateralMint = readPubkey(data, offset);
+  offset += 32;
 
-  if (shouldParseAppended) {
-    contractVersion = readU8(data, offset);
-    offset += 1;
+  const collateralTokenAccount = readPubkey(data, offset);
+  offset += 32;
 
-    collateralMint = readPubkey(data, offset);
-    offset += 32;
+  const collateralValueAtCreationRaw = readU64(data, offset);
+  offset += 8;
 
-    collateralTokenAccount = readPubkey(data, offset);
-    offset += 32;
+  const ltvFloorBps = readU16(data, offset);
+  offset += 2;
 
-    collateralValueAtCreationRaw = readU64(data, offset);
-    offset += 8;
+  const loanMint = readPubkey(data, offset);
+  offset += 32;
 
-    ltvFloorBps = readU16(data, offset);
-    offset += 2;
+  const loanTokenAccount = readPubkey(data, offset);
+  offset += 32;
 
-    loanMint = readPubkey(data, offset);
-    offset += 32;
+  const recallRequested = readBool(data, offset);
+  offset += 1;
 
-    loanTokenAccount = readPubkey(data, offset);
-    offset += 32;
+  const recallRequestedAt = readI64(data, offset);
+  offset += 8;
 
-    recallRequested = readBool(data, offset);
-    offset += 1;
+  const recallRequestedBy = readPubkey(data, offset);
+  offset += 32;
 
-    recallRequestedAt = readI64(data, offset);
-    offset += 8;
-
-    recallRequestedBy = readPubkey(data, offset);
-    offset += 32;
-
-    if (migrationReserveAvailable) {
-      const migrationReserve = data.subarray(offset, offset + MIGRATION_RESERVE_BYTES);
-      if (migrationReserve.length !== MIGRATION_RESERVE_BYTES) {
-        throw new RangeError('DebtContract migration reserve bytes are truncated');
-      }
-      migrationReserveHex = migrationReserve.toString('hex');
-      offset += MIGRATION_RESERVE_BYTES;
-    }
+  const reservedTail = data.subarray(offset, offset + RESERVED_TAIL_BYTES);
+  if (reservedTail.length !== RESERVED_TAIL_BYTES) {
+    throw new RangeError('DebtContract tail reserved bytes are truncated');
   }
-
-  const layout =
-    candidate.id === 'current'
-      ? shouldParseAppended
-        ? 'current'
-        : 'current_base'
-      : candidate.id;
+  offset += RESERVED_TAIL_BYTES;
 
   return {
-    layout,
+    layout: 'current',
     borrower,
-    contractSeed: contractSeed?.toString() ?? null,
+    contractSeed: contractSeed.toString(),
     targetAmount: asUiUsdc(targetAmountRaw),
     targetAmountRaw: targetAmountRaw.toString(),
     fundedAmount: asUiUsdc(fundedAmountRaw),
@@ -308,48 +261,26 @@ function parseCandidate(data: Buffer, candidate: ContractLayoutCandidate): Parse
     minPartialFillBps,
     listingFeePaid: asUiUsdc(listingFeePaidRaw),
     listingFeePaidRaw: listingFeePaidRaw.toString(),
-    fundingAccessMode: decodeFundingAccessMode(reserved),
-    hasActiveProposal: reserved[1] === 1,
-    proposalCount: decodeProposalCount(reserved).toString(),
-    reservedHex: reserved.toString('hex'),
+    fundingAccessMode,
+    hasActiveProposal,
+    proposalCount: proposalCountRaw.toString(),
+    uncollectableBalance: asUiUsdc(uncollectableBalanceRaw),
+    uncollectableBalanceRaw: uncollectableBalanceRaw.toString(),
+    totalPrepaymentFees: asUiUsdc(totalPrepaymentFeesRaw),
+    totalPrepaymentFeesRaw: totalPrepaymentFeesRaw.toString(),
     accountVersion,
     contractVersion,
     collateralMint,
     collateralTokenAccount,
-    collateralValueAtCreation: collateralValueAtCreationRaw === null ? null : asUiUsdc(collateralValueAtCreationRaw),
-    collateralValueAtCreationRaw: collateralValueAtCreationRaw?.toString() ?? null,
+    collateralValueAtCreation: asUiUsdc(collateralValueAtCreationRaw),
+    collateralValueAtCreationRaw: collateralValueAtCreationRaw.toString(),
     ltvFloorBps,
     loanMint,
     loanTokenAccount,
     recallRequested,
-    recallRequestedAt: recallRequestedAt?.toString() ?? null,
+    recallRequestedAt: recallRequestedAt.toString(),
     recallRequestedBy,
-    ...(migrationReserveHex === undefined ? {} : { migrationReserveHex }),
   };
-}
-
-function scoreCandidate(parsed: ParsedContractAccount): number {
-  let score = 0;
-
-  if (parsed.status !== 'Unknown') score += 5;
-  if (parsed.loanType !== 'Unknown') score += 4;
-  if (parsed.interestPaymentType !== 'Unknown') score += 3;
-  if (parsed.principalPaymentType !== 'Unknown') score += 3;
-  if (parsed.interestFrequency !== 'Unknown') score += 3;
-  if (parsed.principalFrequency !== 'Unknown') score += 2;
-  if (parsed.numContributions <= MAX_REASONABLE_CONTRIBUTIONS) score += 2;
-  if (parsed.maxLenders <= MAX_REASONABLE_CONTRIBUTIONS) score += 2;
-  if (parsed.termDays <= 36500) score += 1;
-  if (parsed.interestRate <= 1_000_000) score += 1;
-
-  const createdAt = Number(parsed.createdAt);
-  if (Number.isFinite(createdAt) && createdAt >= 1_400_000_000 && createdAt <= 2_500_000_000) {
-    score += 2;
-  }
-
-  if (parsed.layout === 'current') score += 4;
-  if (parsed.layout === 'current_base') score += 2;
-  return score;
 }
 
 export function parseContractAccount(data: Buffer): ParsedContractAccount | null {
@@ -357,40 +288,13 @@ export function parseContractAccount(data: Buffer): ParsedContractAccount | null
     return null;
   }
 
-  const candidates: ContractLayoutCandidate[] = [
-    {
-      id: 'current',
-      hasContractSeed: true,
-      interestRateEncoding: 'u32',
-      allowAppendedFields: true,
-    },
-  ];
-
-  const parsedCandidates: ParsedCandidate[] = [];
-  for (let i = 0; i < candidates.length; i += 1) {
-    const candidate = candidates[i];
-    try {
-      const parsed = parseCandidate(data, candidate);
-      parsedCandidates.push({
-        parsed,
-        score: scoreCandidate(parsed),
-        priority: i,
-      });
-    } catch {
-      // Ignore invalid candidate layouts.
-    }
-  }
-
-  if (parsedCandidates.length === 0) {
+  if (data.length < CURRENT_LAYOUT_LEN) {
     return null;
   }
 
-  parsedCandidates.sort((a, b) => {
-    if (a.score !== b.score) {
-      return b.score - a.score;
-    }
-    return a.priority - b.priority;
-  });
-
-  return parsedCandidates[0]?.parsed ?? null;
+  try {
+    return parseCurrentLayout(data);
+  } catch {
+    return null;
+  }
 }

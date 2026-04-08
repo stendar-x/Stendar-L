@@ -91,16 +91,6 @@ pub struct CreateDebtContract<'info> {
 }
 
 #[derive(Accounts)]
-pub struct MigrateContract<'info> {
-    /// CHECK: Validated in instruction (owner, discriminator, PDA derivation).
-    #[account(mut)]
-    pub contract: AccountInfo<'info>,
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
 pub struct ApproveFunder<'info> {
     #[account(
         mut,

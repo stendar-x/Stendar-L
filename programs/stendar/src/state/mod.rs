@@ -31,9 +31,8 @@ pub const POOL_SEED: &[u8] = b"pool";
 pub const POOL_DEPOSIT_SEED: &[u8] = b"pool_deposit";
 pub const POOL_OPERATOR_SEED: &[u8] = b"pool_operator";
 pub const PENDING_POOL_CHANGE_SEED: &[u8] = b"pending_pool_change";
-pub const CURRENT_ACCOUNT_VERSION: u16 = 2;
-pub const DEBT_CONTRACT_RESERVED_BYTES: usize = 44;
-pub const MIGRATION_RESERVE_BYTES: usize = 128;
+pub const CURRENT_ACCOUNT_VERSION: u16 = 1;
+pub const RESERVED_TAIL_BYTES: usize = 96;
 pub const LENDER_CONTRIBUTION_RESERVED_BYTES: usize = 24;
 pub const LENDER_ESCROW_RESERVED_BYTES: usize = 32;
 pub const APPROVED_FUNDER_RESERVED_BYTES: usize = 32;
@@ -48,61 +47,6 @@ pub const RECALL_FEE_BPS: u16 = 200; // 2% demand recall fee
 pub const PREPAYMENT_FEE_BPS: u16 = 200; // 2% voluntary principal prepayment fee
 pub const RECALL_GRACE_PERIOD_SECONDS: i64 = 259_200; // 72 hours
 pub const PARTIAL_LIQUIDATION_CAP_BPS: u16 = 5_000; // 50% max per partial liquidation
-
-#[derive(Clone, Copy, Debug, Default)]
-struct DebtContractReservedFields {
-    funding_access_mode: u8,
-    has_active_proposal: bool,
-    proposal_count: u64,
-    uncollectable_balance: u64,
-    total_prepayment_fees: u64,
-}
-
-impl DebtContractReservedFields {
-    const FUNDING_ACCESS_MODE_INDEX: usize = 0;
-    const HAS_ACTIVE_PROPOSAL_INDEX: usize = 1;
-    const PROPOSAL_COUNT_START: usize = 2;
-    const PROPOSAL_COUNT_END: usize = Self::PROPOSAL_COUNT_START + 8;
-    const UNCOLLECTABLE_BALANCE_START: usize = 10;
-    const UNCOLLECTABLE_BALANCE_END: usize = Self::UNCOLLECTABLE_BALANCE_START + 8;
-    const TOTAL_PREPAYMENT_FEES_START: usize = 18;
-    const TOTAL_PREPAYMENT_FEES_END: usize = Self::TOTAL_PREPAYMENT_FEES_START + 8;
-
-    fn from_bytes(bytes: &[u8; DEBT_CONTRACT_RESERVED_BYTES]) -> Self {
-        let mut proposal_count_bytes = [0u8; 8];
-        proposal_count_bytes
-            .copy_from_slice(&bytes[Self::PROPOSAL_COUNT_START..Self::PROPOSAL_COUNT_END]);
-
-        let mut uncollectable_balance_bytes = [0u8; 8];
-        uncollectable_balance_bytes.copy_from_slice(
-            &bytes[Self::UNCOLLECTABLE_BALANCE_START..Self::UNCOLLECTABLE_BALANCE_END],
-        );
-
-        let mut total_prepayment_fees_bytes = [0u8; 8];
-        total_prepayment_fees_bytes.copy_from_slice(
-            &bytes[Self::TOTAL_PREPAYMENT_FEES_START..Self::TOTAL_PREPAYMENT_FEES_END],
-        );
-
-        Self {
-            funding_access_mode: bytes[Self::FUNDING_ACCESS_MODE_INDEX],
-            has_active_proposal: bytes[Self::HAS_ACTIVE_PROPOSAL_INDEX] == 1,
-            proposal_count: u64::from_le_bytes(proposal_count_bytes),
-            uncollectable_balance: u64::from_le_bytes(uncollectable_balance_bytes),
-            total_prepayment_fees: u64::from_le_bytes(total_prepayment_fees_bytes),
-        }
-    }
-
-    fn write_into(self, bytes: &mut [u8; DEBT_CONTRACT_RESERVED_BYTES]) {
-        bytes[Self::FUNDING_ACCESS_MODE_INDEX] = self.funding_access_mode;
-        bytes[Self::HAS_ACTIVE_PROPOSAL_INDEX] = if self.has_active_proposal { 1 } else { 0 };
-        bytes[Self::PROPOSAL_COUNT_START..Self::PROPOSAL_COUNT_END]
-            .copy_from_slice(&self.proposal_count.to_le_bytes());
-        bytes[Self::UNCOLLECTABLE_BALANCE_START..Self::UNCOLLECTABLE_BALANCE_END]
-            .copy_from_slice(&self.uncollectable_balance.to_le_bytes());
-        bytes[Self::TOTAL_PREPAYMENT_FEES_START..Self::TOTAL_PREPAYMENT_FEES_END]
-            .copy_from_slice(&self.total_prepayment_fees.to_le_bytes());
-    }
-}
 
 /// Registry of approved collateral assets for standard cross-collateral contracts.
 #[account]
@@ -244,8 +188,16 @@ pub struct DebtContract {
     pub min_partial_fill_bps: u16,
     /// Listing fee charged at creation (tracked for expiry refunds).
     pub listing_fee_paid: u64,
-    /// Reserved space for additive schema changes without realloc.
-    pub _reserved: [u8; DEBT_CONTRACT_RESERVED_BYTES],
+    /// Controls whether the contract accepts public or allowlist-only funding.
+    pub funding_access_mode: FundingAccessMode,
+    /// Whether there is currently an active term amendment proposal.
+    pub has_active_proposal: bool,
+    /// Monotonically increasing proposal id counter.
+    pub proposal_count: u64,
+    /// Balance that remained uncollectable after full liquidation.
+    pub uncollectable_balance: u64,
+    /// Aggregate prepayment fees collected over the contract lifetime.
+    pub total_prepayment_fees: u64,
     /// Version for account layout compatibility.
     pub account_version: u16,
     // --- Appended fields kept for layout compatibility ---
@@ -259,14 +211,14 @@ pub struct DebtContract {
     pub recall_requested: bool,            // Whether a demand recall is pending
     pub recall_requested_at: i64,          // Recall request timestamp (0 if none)
     pub recall_requested_by: Pubkey,       // Lender who requested recall
-    /// Reserved tail space for future additive migrations.
-    pub _migration_reserve: [u8; MIGRATION_RESERVE_BYTES],
+    /// Empty tail buffer reserved for future additive changes.
+    pub _reserved: [u8; RESERVED_TAIL_BYTES],
 }
 
 impl DebtContract {
     // NOTE: Keep this in sync with the deployed on-chain account layout / IDL.
     // The production `DebtContract` account does not include a `processing` flag.
-    pub const BASE_LAYOUT_LEN: usize = 8
+    pub const LEN: usize = 8
         + 32
         + 8
         + 8
@@ -300,85 +252,38 @@ impl DebtContract {
         + 1
         + 2
         + 8
-        + DEBT_CONTRACT_RESERVED_BYTES
-        + 2;
-    pub const ADDITIONAL_LAYOUT_LEN: usize =
-        1 + 32 + 32 + 8 + 2 + 32 + 32 + 1 + 8 + 32 + MIGRATION_RESERVE_BYTES;
-    pub const LEN: usize = Self::BASE_LAYOUT_LEN + Self::ADDITIONAL_LAYOUT_LEN;
-
-    fn reserved_fields(&self) -> DebtContractReservedFields {
-        DebtContractReservedFields::from_bytes(&self._reserved)
-    }
-
-    fn write_reserved_fields(&mut self, fields: DebtContractReservedFields) {
-        fields.write_into(&mut self._reserved);
-    }
-
-    pub fn funding_access_mode(&self) -> FundingAccessMode {
-        FundingAccessMode::from_reserved_byte(self.reserved_fields().funding_access_mode)
-    }
-
-    pub fn set_funding_access_mode(&mut self, mode: FundingAccessMode) {
-        let mut fields = self.reserved_fields();
-        fields.funding_access_mode = mode.to_reserved_byte();
-        self.write_reserved_fields(fields);
-    }
-
-    pub fn has_active_proposal(&self) -> bool {
-        self.reserved_fields().has_active_proposal
-    }
-
-    pub fn set_has_active_proposal(&mut self, active: bool) {
-        let mut fields = self.reserved_fields();
-        fields.has_active_proposal = active;
-        self.write_reserved_fields(fields);
-    }
-
-    pub fn proposal_count(&self) -> u64 {
-        self.reserved_fields().proposal_count
-    }
-
-    pub fn set_proposal_count(&mut self, count: u64) {
-        let mut fields = self.reserved_fields();
-        fields.proposal_count = count;
-        self.write_reserved_fields(fields);
-    }
+        + 1
+        + 1
+        + 8
+        + 8
+        + 8
+        + 2
+        + 1
+        + 32
+        + 32
+        + 8
+        + 2
+        + 32
+        + 32
+        + 1
+        + 8
+        + 32
+        + RESERVED_TAIL_BYTES;
 
     pub fn increment_proposal_count(&mut self) -> Result<u64> {
-        let current = self.proposal_count();
-        let next = current
+        let next = self
+            .proposal_count
             .checked_add(1)
             .ok_or(StendarError::ArithmeticOverflow)?;
-        self.set_proposal_count(next);
+        self.proposal_count = next;
         Ok(next)
     }
 
-    pub fn uncollectable_balance(&self) -> u64 {
-        self.reserved_fields().uncollectable_balance
-    }
-
-    pub fn set_uncollectable_balance(&mut self, amount: u64) {
-        let mut fields = self.reserved_fields();
-        fields.uncollectable_balance = amount;
-        self.write_reserved_fields(fields);
-    }
-
-    pub fn total_prepayment_fees(&self) -> u64 {
-        self.reserved_fields().total_prepayment_fees
-    }
-
-    pub fn set_total_prepayment_fees(&mut self, amount: u64) {
-        let mut fields = self.reserved_fields();
-        fields.total_prepayment_fees = amount;
-        self.write_reserved_fields(fields);
-    }
-
     pub fn add_prepayment_fee(&mut self, amount: u64) -> Result<()> {
-        let next = self
-            .total_prepayment_fees()
+        self.total_prepayment_fees = self
+            .total_prepayment_fees
             .checked_add(amount)
             .ok_or(StendarError::ArithmeticOverflow)?;
-        self.set_total_prepayment_fees(next);
         Ok(())
     }
 
@@ -635,44 +540,6 @@ pub struct PlatformStats {
 mod tests {
     use super::*;
 
-    #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-    struct DebtContractBaseLayout {
-        pub borrower: Pubkey,
-        pub contract_seed: u64,
-        pub target_amount: u64,
-        pub funded_amount: u64,
-        pub interest_rate: u32,
-        pub term_days: u32,
-        pub collateral_amount: u64,
-        pub loan_type: LoanType,
-        pub ltv_ratio: u64,
-        pub interest_payment_type: InterestPaymentType,
-        pub principal_payment_type: PrincipalPaymentType,
-        pub interest_frequency: PaymentFrequency,
-        pub principal_frequency: Option<PaymentFrequency>,
-        pub created_at: i64,
-        pub status: ContractStatus,
-        pub num_contributions: u32,
-        pub outstanding_balance: u64,
-        pub accrued_interest: u64,
-        pub last_interest_update: i64,
-        pub last_principal_payment: i64,
-        pub total_principal_paid: u64,
-        pub contributions: Vec<Pubkey>,
-        pub last_bot_update: i64,
-        pub next_interest_payment_due: i64,
-        pub next_principal_payment_due: i64,
-        pub bot_operation_count: u64,
-        pub max_lenders: u16,
-        pub partial_funding_flag: u8,
-        pub expires_at: i64,
-        pub allow_partial_fill: bool,
-        pub min_partial_fill_bps: u16,
-        pub listing_fee_paid: u64,
-        pub _reserved: [u8; DEBT_CONTRACT_RESERVED_BYTES],
-        pub account_version: u16,
-    }
-
     fn max_contributions() -> Vec<Pubkey> {
         (0..14).map(|_| Pubkey::new_unique()).collect()
     }
@@ -711,6 +578,12 @@ mod tests {
             allow_partial_fill: true,
             min_partial_fill_bps: 5_000,
             listing_fee_paid: 1_000_000,
+            funding_access_mode: FundingAccessMode::Public,
+            has_active_proposal: false,
+            proposal_count: 0,
+            uncollectable_balance: 0,
+            total_prepayment_fees: 0,
+            account_version: CURRENT_ACCOUNT_VERSION,
             contract_version: 2,
             collateral_mint: Pubkey::new_unique(),
             collateral_token_account: Pubkey::new_unique(),
@@ -721,9 +594,7 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
-            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
-            _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
-            account_version: CURRENT_ACCOUNT_VERSION,
+            _reserved: [0u8; RESERVED_TAIL_BYTES],
         }
     }
 
@@ -817,71 +688,12 @@ mod tests {
     }
 
     #[test]
-    fn debt_contract_len_matches_base_plus_appended_fields() {
-        assert_eq!(DebtContract::BASE_LAYOUT_LEN, 699);
-        assert_eq!(DebtContract::ADDITIONAL_LAYOUT_LEN, 308);
-        assert_eq!(DebtContract::LEN, 1007);
+    fn debt_contract_len_matches_layout() {
+        assert_eq!(DebtContract::LEN, 957);
 
         let contract = sample_standard_contract();
         let serialized = contract.try_to_vec().expect("serialize contract");
         assert_eq!(serialized.len() + 8, DebtContract::LEN);
-    }
-
-    #[test]
-    fn debt_contract_len_includes_migration_reserve() {
-        let expected_with_reserve = 1 + 32 + 32 + 8 + 2 + 32 + 32 + 1 + 8 + 32 + 128;
-        assert_eq!(MIGRATION_RESERVE_BYTES, 128);
-        assert_eq!(DebtContract::ADDITIONAL_LAYOUT_LEN, expected_with_reserve);
-    }
-
-    #[test]
-    fn base_layout_bytes_are_unchanged_with_appended_fields() {
-        let contract = sample_standard_contract();
-        let base_layout = DebtContractBaseLayout {
-            borrower: contract.borrower,
-            contract_seed: contract.contract_seed,
-            target_amount: contract.target_amount,
-            funded_amount: contract.funded_amount,
-            interest_rate: contract.interest_rate,
-            term_days: contract.term_days,
-            collateral_amount: contract.collateral_amount,
-            loan_type: contract.loan_type,
-            ltv_ratio: contract.ltv_ratio,
-            interest_payment_type: contract.interest_payment_type,
-            principal_payment_type: contract.principal_payment_type,
-            interest_frequency: contract.interest_frequency,
-            principal_frequency: contract.principal_frequency,
-            created_at: contract.created_at,
-            status: contract.status,
-            num_contributions: contract.num_contributions,
-            outstanding_balance: contract.outstanding_balance,
-            accrued_interest: contract.accrued_interest,
-            last_interest_update: contract.last_interest_update,
-            last_principal_payment: contract.last_principal_payment,
-            total_principal_paid: contract.total_principal_paid,
-            contributions: contract.contributions.clone(),
-            last_bot_update: contract.last_bot_update,
-            next_interest_payment_due: contract.next_interest_payment_due,
-            next_principal_payment_due: contract.next_principal_payment_due,
-            bot_operation_count: contract.bot_operation_count,
-            max_lenders: contract.max_lenders,
-            partial_funding_flag: contract.partial_funding_flag,
-            expires_at: contract.expires_at,
-            allow_partial_fill: contract.allow_partial_fill,
-            min_partial_fill_bps: contract.min_partial_fill_bps,
-            listing_fee_paid: contract.listing_fee_paid,
-            _reserved: contract._reserved,
-            account_version: contract.account_version,
-        };
-
-        let base_layout_bytes = base_layout.try_to_vec().expect("serialize base layout");
-        let full_bytes = contract.try_to_vec().expect("serialize full layout");
-
-        assert_eq!(base_layout_bytes.len() + 8, DebtContract::BASE_LAYOUT_LEN);
-        assert_eq!(
-            &full_bytes[..base_layout_bytes.len()],
-            &base_layout_bytes[..]
-        );
     }
 
     #[test]
@@ -923,47 +735,46 @@ mod tests {
     }
 
     #[test]
-    fn debt_contract_reserved_bytes_track_proposal_state() {
+    fn debt_contract_fields_track_proposal_state() {
         let mut contract = sample_standard_contract();
-        assert!(!contract.has_active_proposal());
-        assert_eq!(contract.proposal_count(), 0);
+        assert!(!contract.has_active_proposal);
+        assert_eq!(contract.proposal_count, 0);
 
-        contract.set_has_active_proposal(true);
-        contract.set_proposal_count(41);
+        contract.has_active_proposal = true;
+        contract.proposal_count = 41;
 
-        assert!(contract.has_active_proposal());
-        assert_eq!(contract.proposal_count(), 41);
+        assert!(contract.has_active_proposal);
+        assert_eq!(contract.proposal_count, 41);
 
         let next = contract
             .increment_proposal_count()
             .expect("increment proposal count");
         assert_eq!(next, 42);
-        assert_eq!(contract.proposal_count(), 42);
+        assert_eq!(contract.proposal_count, 42);
 
-        contract.set_has_active_proposal(false);
-        assert!(!contract.has_active_proposal());
+        contract.has_active_proposal = false;
+        assert!(!contract.has_active_proposal);
     }
 
     #[test]
-    fn debt_contract_reserved_bytes_track_uncollectable_balance() {
+    fn debt_contract_fields_track_uncollectable_balance() {
         let mut contract = sample_standard_contract();
-        assert_eq!(contract.uncollectable_balance(), 0);
+        assert_eq!(contract.uncollectable_balance, 0);
 
-        contract.set_uncollectable_balance(123_456);
-        assert_eq!(contract.uncollectable_balance(), 123_456);
+        contract.uncollectable_balance = 123_456;
+        assert_eq!(contract.uncollectable_balance, 123_456);
 
-        // Proposal metadata shares the reserved block and must remain intact.
-        contract.set_has_active_proposal(true);
-        contract.set_proposal_count(7);
-        assert!(contract.has_active_proposal());
-        assert_eq!(contract.proposal_count(), 7);
-        assert_eq!(contract.uncollectable_balance(), 123_456);
+        contract.has_active_proposal = true;
+        contract.proposal_count = 7;
+        assert!(contract.has_active_proposal);
+        assert_eq!(contract.proposal_count, 7);
+        assert_eq!(contract.uncollectable_balance, 123_456);
     }
 
     #[test]
-    fn debt_contract_reserved_bytes_track_total_prepayment_fees() {
+    fn debt_contract_fields_track_total_prepayment_fees() {
         let mut contract = sample_standard_contract();
-        assert_eq!(contract.total_prepayment_fees(), 0);
+        assert_eq!(contract.total_prepayment_fees, 0);
 
         contract
             .add_prepayment_fee(500)
@@ -971,16 +782,15 @@ mod tests {
         contract
             .add_prepayment_fee(250)
             .expect("second prepayment fee increment");
-        assert_eq!(contract.total_prepayment_fees(), 750);
+        assert_eq!(contract.total_prepayment_fees, 750);
 
-        // Ensure other reserved metadata remains intact.
-        contract.set_has_active_proposal(true);
-        contract.set_proposal_count(2);
-        contract.set_uncollectable_balance(99);
-        assert!(contract.has_active_proposal());
-        assert_eq!(contract.proposal_count(), 2);
-        assert_eq!(contract.uncollectable_balance(), 99);
-        assert_eq!(contract.total_prepayment_fees(), 750);
+        contract.has_active_proposal = true;
+        contract.proposal_count = 2;
+        contract.uncollectable_balance = 99;
+        assert!(contract.has_active_proposal);
+        assert_eq!(contract.proposal_count, 2);
+        assert_eq!(contract.uncollectable_balance, 99);
+        assert_eq!(contract.total_prepayment_fees, 750);
     }
 }
 

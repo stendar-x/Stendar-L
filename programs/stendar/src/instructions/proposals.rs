@@ -245,13 +245,10 @@ pub fn create_term_proposal(
         contract.status == ContractStatus::Active,
         StendarError::ContractNotActive
     );
-    require!(
-        !contract.has_active_proposal(),
-        StendarError::ProposalAlreadyActive
-    );
+    require!(!contract.has_active_proposal, StendarError::ProposalAlreadyActive);
 
     let expected_proposal_id = contract
-        .proposal_count()
+        .proposal_count
         .checked_add(1)
         .ok_or(StendarError::ArithmeticOverflow)?;
     require!(
@@ -346,8 +343,8 @@ pub fn create_term_proposal(
     proposer_vote._reserved = [0u8; 15];
     proposer_vote.account_version = CURRENT_ACCOUNT_VERSION;
 
-    contract.set_has_active_proposal(true);
-    contract.set_proposal_count(proposal_id);
+    contract.has_active_proposal = true;
+    contract.proposal_count = proposal_id;
 
     if proposal.total_participants == 1 {
         require!(
@@ -357,7 +354,7 @@ pub fn create_term_proposal(
         apply_approved_terms(contract, proposal, now)?;
         proposal.status = ProposalStatus::Approved;
         proposal.resolved_at = now;
-        contract.set_has_active_proposal(false);
+        contract.has_active_proposal = false;
     }
 
     Ok(())
@@ -377,10 +374,7 @@ pub fn vote_on_proposal(
 
     require_current_version(contract.account_version)?;
     require_current_version(proposal.account_version)?;
-    require!(
-        contract.has_active_proposal(),
-        StendarError::ProposalNotPending
-    );
+    require!(contract.has_active_proposal, StendarError::ProposalNotPending);
     require!(proposal.is_pending(), StendarError::ProposalNotPending);
     require!(now < proposal.expires_at, StendarError::ProposalExpired);
     require!(
@@ -456,7 +450,7 @@ pub fn vote_on_proposal(
             if proposal.recall_pledged_count > 0 {
                 proposal.recall_grace_start = now;
             }
-            contract.set_has_active_proposal(false);
+            contract.has_active_proposal = false;
 
             let proposer_cooldown = &mut ctx.accounts.proposer_cooldown;
             ensure_cooldown_account_initialized(
@@ -477,7 +471,7 @@ pub fn vote_on_proposal(
                 apply_approved_terms(contract, proposal, now)?;
                 proposal.status = ProposalStatus::Approved;
                 proposal.resolved_at = now;
-                contract.set_has_active_proposal(false);
+                contract.has_active_proposal = false;
             }
         }
     }
@@ -500,7 +494,7 @@ pub fn cancel_term_proposal(ctx: Context<CancelTermProposal>, _proposal_id: u64)
 
     proposal.status = ProposalStatus::Cancelled;
     proposal.resolved_at = now;
-    contract.set_has_active_proposal(false);
+    contract.has_active_proposal = false;
 
     Ok(())
 }
@@ -520,7 +514,7 @@ pub fn expire_term_proposal(ctx: Context<ExpireTermProposal>, _proposal_id: u64)
     if proposal.recall_pledged_count > 0 {
         proposal.recall_grace_start = now;
     }
-    contract.set_has_active_proposal(false);
+    contract.has_active_proposal = false;
 
     let proposer_cooldown = &mut ctx.accounts.proposer_cooldown;
     ensure_cooldown_account_initialized(proposer_cooldown, contract.key(), proposal.proposer)?;
@@ -779,8 +773,8 @@ pub fn close_proposal_accounts(
     require!(!proposal.is_pending(), StendarError::ProposalNotPending);
 
     // Defensive reset in case a stale flag remains.
-    if ctx.accounts.contract.has_active_proposal() {
-        ctx.accounts.contract.set_has_active_proposal(false);
+    if ctx.accounts.contract.has_active_proposal {
+        ctx.accounts.contract.has_active_proposal = false;
     }
 
     Ok(())
