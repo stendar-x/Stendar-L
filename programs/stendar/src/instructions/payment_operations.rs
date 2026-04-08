@@ -826,8 +826,7 @@ mod tests {
     use super::{apply_principal_allocation, calculate_lender_share, calculate_principal_allocation};
     use crate::state::{
         ContractStatus, DebtContract, InterestPaymentType, LoanType, PaymentFrequency,
-        PrincipalPaymentType, CURRENT_ACCOUNT_VERSION, DEBT_CONTRACT_RESERVED_BYTES,
-        MIGRATION_RESERVE_BYTES,
+        PrincipalPaymentType, CURRENT_ACCOUNT_VERSION, RESERVED_TAIL_BYTES,
     };
     use anchor_lang::prelude::Pubkey;
 
@@ -869,7 +868,11 @@ mod tests {
             allow_partial_fill: false,
             min_partial_fill_bps: 0,
             listing_fee_paid: 0,
-            _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
+            funding_access_mode: crate::state::FundingAccessMode::Public,
+            has_active_proposal: false,
+            proposal_count: 0,
+            uncollectable_balance: 0,
+            total_prepayment_fees: 0,
             account_version: CURRENT_ACCOUNT_VERSION,
             contract_version: 2,
             collateral_mint: Pubkey::new_unique(),
@@ -881,7 +884,7 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
-            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
+            _reserved: [0u8; RESERVED_TAIL_BYTES],
         }
     }
 
@@ -963,7 +966,7 @@ mod tests {
         assert_eq!(allocation.prepayment_fee, 1);
         assert_eq!(contract.outstanding_balance, 951);
         assert_eq!(contract.total_principal_paid, 49);
-        assert_eq!(contract.total_prepayment_fees(), 1);
+        assert_eq!(contract.total_prepayment_fees, 1);
     }
 
     #[test]

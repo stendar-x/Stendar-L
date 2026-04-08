@@ -4639,35 +4639,6 @@
       ]
     },
     {
-      "name": "migrate_contract",
-      "discriminator": [
-        130,
-        38,
-        227,
-        224,
-        91,
-        79,
-        163,
-        127
-      ],
-      "accounts": [
-        {
-          "name": "contract",
-          "writable": true
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "operator_return_deposit",
       "discriminator": [
         34,
@@ -8980,16 +8951,43 @@
             "type": "u64"
           },
           {
-            "name": "_reserved",
+            "name": "funding_access_mode",
             "docs": [
-              "Reserved space for additive schema changes without realloc."
+              "Controls whether the contract accepts public or allowlist-only funding."
             ],
             "type": {
-              "array": [
-                "u8",
-                44
-              ]
+              "defined": {
+                "name": "FundingAccessMode"
+              }
             }
+          },
+          {
+            "name": "has_active_proposal",
+            "docs": [
+              "Whether there is currently an active term amendment proposal."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "proposal_count",
+            "docs": [
+              "Monotonically increasing proposal id counter."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "uncollectable_balance",
+            "docs": [
+              "Balance that remained uncollectable after full liquidation."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_prepayment_fees",
+            "docs": [
+              "Aggregate prepayment fees collected over the contract lifetime."
+            ],
+            "type": "u64"
           },
           {
             "name": "account_version",
@@ -9039,14 +9037,14 @@
             "type": "pubkey"
           },
           {
-            "name": "_migration_reserve",
+            "name": "_reserved",
             "docs": [
-              "Reserved tail space for future additive migrations."
+              "Empty tail buffer reserved for future additive changes."
             ],
             "type": {
               "array": [
                 "u8",
-                128
+                96
               ]
             }
           }

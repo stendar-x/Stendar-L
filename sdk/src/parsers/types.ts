@@ -24,7 +24,7 @@ export type ParsedListingType = 'FullPosition' | 'PartialPosition';
 export type ParsedTradeType = 'DirectSale' | 'AcceptedOffer' | 'PartialFill';
 
 export interface ParsedContractAccount {
-  layout: 'current' | 'current_base';
+  layout: 'current';
   borrower: string;
   contractSeed: string | null;
   targetAmount: number;
@@ -66,7 +66,10 @@ export interface ParsedContractAccount {
   fundingAccessMode: 'Public' | 'AllowlistOnly';
   hasActiveProposal: boolean;
   proposalCount: string;
-  reservedHex: string;
+  uncollectableBalance: number;
+  uncollectableBalanceRaw: string;
+  totalPrepaymentFees: number;
+  totalPrepaymentFeesRaw: string;
   accountVersion: number | null;
   contractVersion: number | null;
   collateralMint: string | null;
@@ -79,7 +82,6 @@ export interface ParsedContractAccount {
   recallRequested: boolean | null;
   recallRequestedAt: string | null;
   recallRequestedBy: string | null;
-  migrationReserveHex?: string;
 }
 
 export interface ParsedContributionAccount {

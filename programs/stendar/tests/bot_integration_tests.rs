@@ -388,6 +388,12 @@ fn create_mock_contracts(
                 allow_partial_fill: false,
                 min_partial_fill_bps: 0,
                 listing_fee_paid: 0,
+                funding_access_mode: FundingAccessMode::Public,
+                has_active_proposal: false,
+                proposal_count: 0,
+                uncollectable_balance: 0,
+                total_prepayment_fees: 0,
+                account_version: CURRENT_ACCOUNT_VERSION,
                 contract_version: 1,
                 collateral_mint: Pubkey::default(),
                 collateral_token_account: Pubkey::default(),
@@ -398,9 +404,7 @@ fn create_mock_contracts(
                 recall_requested: false,
                 recall_requested_at: 0,
                 recall_requested_by: Pubkey::default(),
-                _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
-                _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
-                account_version: CURRENT_ACCOUNT_VERSION,
+                _reserved: [0u8; RESERVED_TAIL_BYTES],
             }
         })
         .collect()
