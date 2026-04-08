@@ -101,7 +101,7 @@ function makePubkey(seed: number): string {
 
 function buildContractCurrentFullBuffer(): Buffer {
   const w = new BufferWriter();
-  const tailReserved = Buffer.alloc(96, 0xab);
+  const tailReserved = Buffer.alloc(38, 0xab);
 
   w.writeBytes(DISCRIMINATORS.DEBT_CONTRACT);
   w.writePubkey(makePubkey(11)); // borrower
@@ -154,6 +154,16 @@ function buildContractCurrentFullBuffer(): Buffer {
   w.writeBool(true); // recall_requested
   w.writeI64(1_700_100_000n); // recall_requested_at
   w.writePubkey(makePubkey(45)); // recall_requested_by
+  w.writeBool(true); // is_revolving
+  w.writeU64(1_200_000n); // credit_limit
+  w.writeU64(350_000n); // drawn_amount
+  w.writeU64(850_000n); // available_amount
+  w.writeU32(225); // standby_fee_rate
+  w.writeU64(4_200n); // accrued_standby_fees
+  w.writeI64(1_700_100_500n); // last_standby_fee_update
+  w.writeU32(3); // total_draws
+  w.writeU64(9_999n); // total_standby_fees_paid
+  w.writeBool(false); // revolving_closed
   w.writeBytes(tailReserved);
 
   return w.toBuffer(957);
@@ -355,6 +365,11 @@ test('parseContractAccount handles current layout', () => {
   assert.equal(contract?.totalPrepaymentFeesRaw, '654');
   assert.equal(contract?.contractVersion, 2);
   assert.equal(contract?.accountVersion, 1);
+  assert.equal(contract?.isRevolving, true);
+  assert.equal(contract?.standbyFeeRate, 225);
+  assert.equal(contract?.drawnAmountRaw, '350000');
+  assert.equal(contract?.accruedStandbyFeesRaw, '4200');
+  assert.equal(contract?.revolvingClosed, false);
 });
 
 test('parseContributionAccount handles current layout', () => {

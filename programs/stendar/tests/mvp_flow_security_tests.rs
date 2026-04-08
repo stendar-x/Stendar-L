@@ -52,6 +52,16 @@ fn mock_active_contract() -> DebtContract {
         recall_requested: false,
         recall_requested_at: 0,
         recall_requested_by: Pubkey::default(),
+        is_revolving: false,
+        credit_limit: 0,
+        drawn_amount: 0,
+        available_amount: 0,
+        standby_fee_rate: 0,
+        accrued_standby_fees: 0,
+        last_standby_fee_update: 0,
+        total_draws: 0,
+        total_standby_fees_paid: 0,
+        revolving_closed: false,
         _reserved: [0u8; RESERVED_TAIL_BYTES],
     }
 }

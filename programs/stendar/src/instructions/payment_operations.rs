@@ -6,8 +6,9 @@ use crate::state::{
     OPERATIONS_FUND_SEED,
 };
 use crate::utils::{
-    calculate_prepayment_fee, is_native_mint, process_automatic_interest,
-    process_scheduled_principal_payments, require_current_version, safe_u128_to_u64,
+    calculate_prepayment_fee, check_revolving_completion, checkpoint_standby_fees, is_native_mint,
+    process_automatic_interest, process_scheduled_principal_payments, require_current_version,
+    safe_u128_to_u64,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, accessor, CloseAccount, TokenAccount, Transfer};
@@ -137,10 +138,18 @@ pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
     require!(!state.is_paused, StendarError::PlatformPaused);
 
     let result = (|| -> Result<()> {
-        require!(
-            contract.status == ContractStatus::Active,
-            StendarError::ContractNotFunded
-        );
+        if contract.is_revolving {
+            require!(
+                contract.status == ContractStatus::Active
+                    || contract.status == ContractStatus::PendingRecall,
+                StendarError::ContractNotFunded
+            );
+        } else {
+            require!(
+                contract.status == ContractStatus::Active,
+                StendarError::ContractNotFunded
+            );
+        }
         require!(amount > 0, StendarError::InvalidPaymentAmount);
         require!(
             contract.borrower == borrower_key,
@@ -149,13 +158,23 @@ pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
 
         // Update contract state to get current outstanding balance and accrued interest
         let current_time = Clock::get()?.unix_timestamp;
+        checkpoint_standby_fees(contract, current_time)?;
         process_automatic_interest(contract, current_time)?;
-        process_scheduled_principal_payments(contract, current_time)?;
+        if !contract.is_revolving {
+            process_scheduled_principal_payments(contract, current_time)?;
+        }
 
-        let total_owed = contract
-            .outstanding_balance
-            .checked_add(contract.accrued_interest)
-            .ok_or(StendarError::ArithmeticOverflow)?;
+        let total_owed = if contract.is_revolving {
+            contract
+                .accrued_interest
+                .checked_add(contract.accrued_standby_fees)
+                .ok_or(StendarError::ArithmeticOverflow)?
+        } else {
+            contract
+                .outstanding_balance
+                .checked_add(contract.accrued_interest)
+                .ok_or(StendarError::ArithmeticOverflow)?
+        };
         // The UI can slightly overestimate (scheduled principal deductions, rounding). Clamp instead
         // of failing so "max payment" works reliably.
         let payment_amount = std::cmp::min(amount, total_owed);
@@ -199,9 +218,11 @@ pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
         )?;
 
         // Apply payment: first to interest, then to principal
+        let mut interest_payment = 0u64;
+        let mut standby_fee_payment = 0u64;
         let mut principal_payment = 0u64;
         if contract.accrued_interest > 0 {
-            let interest_payment = std::cmp::min(payment_amount, contract.accrued_interest);
+            interest_payment = std::cmp::min(payment_amount, contract.accrued_interest);
             contract.accrued_interest = contract
                 .accrued_interest
                 .checked_sub(interest_payment)
@@ -214,19 +235,57 @@ pub fn make_payment(ctx: Context<MakePayment>, amount: u64) -> Result<()> {
                 .checked_sub(interest_payment)
                 .ok_or(StendarError::ArithmeticOverflow)?;
 
-            if remaining_payment > 0 {
+            if contract.is_revolving {
+                if remaining_payment > 0 && contract.accrued_standby_fees > 0 {
+                    standby_fee_payment =
+                        std::cmp::min(remaining_payment, contract.accrued_standby_fees);
+                    contract.accrued_standby_fees = contract
+                        .accrued_standby_fees
+                        .checked_sub(standby_fee_payment)
+                        .ok_or(StendarError::ArithmeticOverflow)?;
+                    state.total_interest_paid = state
+                        .total_interest_paid
+                        .checked_add(standby_fee_payment)
+                        .ok_or(StendarError::ArithmeticOverflow)?;
+                }
+            } else if remaining_payment > 0 {
                 principal_payment = remaining_payment;
             }
         } else {
-            principal_payment = payment_amount;
+            if contract.is_revolving {
+                standby_fee_payment = std::cmp::min(payment_amount, contract.accrued_standby_fees);
+                contract.accrued_standby_fees = contract
+                    .accrued_standby_fees
+                    .checked_sub(standby_fee_payment)
+                    .ok_or(StendarError::ArithmeticOverflow)?;
+                state.total_interest_paid = state
+                    .total_interest_paid
+                    .checked_add(standby_fee_payment)
+                    .ok_or(StendarError::ArithmeticOverflow)?;
+            } else {
+                principal_payment = payment_amount;
+            }
         }
 
-        if principal_payment > 0 {
+        if contract.is_revolving {
+            if principal_payment > 0 {
+                return Err(StendarError::RevolvingPaymentMustUseRepay.into());
+            }
+            contract.outstanding_balance = contract.drawn_amount;
+        } else if principal_payment > 0 {
             apply_principal_allocation(contract, principal_payment)?;
         }
 
         // Check if loan is fully paid
-        if contract.outstanding_balance == 0 && contract.accrued_interest == 0 {
+        let _interest_like_paid = interest_payment
+            .checked_add(standby_fee_payment)
+            .ok_or(StendarError::ArithmeticOverflow)?;
+        let completed = if contract.is_revolving {
+            check_revolving_completion(contract)
+        } else {
+            contract.outstanding_balance == 0 && contract.accrued_interest == 0
+        };
+        if completed {
             contract.status = ContractStatus::Completed;
 
             // Return only tracked collateral amount, never the whole account balance.
@@ -373,10 +432,18 @@ pub fn make_payment_with_distribution<'info>(
     require!(!state.is_paused, StendarError::PlatformPaused);
 
     let result = (|| -> Result<()> {
-        require!(
-            contract.status == ContractStatus::Active,
-            StendarError::ContractNotFunded
-        );
+        if contract.is_revolving {
+            require!(
+                contract.status == ContractStatus::Active
+                    || contract.status == ContractStatus::PendingRecall,
+                StendarError::ContractNotFunded
+            );
+        } else {
+            require!(
+                contract.status == ContractStatus::Active,
+                StendarError::ContractNotFunded
+            );
+        }
         require!(amount > 0, StendarError::InvalidPaymentAmount);
         require!(
             contract.borrower == borrower_key,
@@ -385,13 +452,23 @@ pub fn make_payment_with_distribution<'info>(
 
         // Update contract state to get current outstanding balance and accrued interest
         let current_time = Clock::get()?.unix_timestamp;
+        checkpoint_standby_fees(contract, current_time)?;
         process_automatic_interest(contract, current_time)?;
-        process_scheduled_principal_payments(contract, current_time)?;
+        if !contract.is_revolving {
+            process_scheduled_principal_payments(contract, current_time)?;
+        }
 
-        let total_owed = contract
-            .outstanding_balance
-            .checked_add(contract.accrued_interest)
-            .ok_or(StendarError::ArithmeticOverflow)?;
+        let total_owed = if contract.is_revolving {
+            contract
+                .accrued_interest
+                .checked_add(contract.accrued_standby_fees)
+                .ok_or(StendarError::ArithmeticOverflow)?
+        } else {
+            contract
+                .outstanding_balance
+                .checked_add(contract.accrued_interest)
+                .ok_or(StendarError::ArithmeticOverflow)?
+        };
         // The UI can slightly overestimate (scheduled principal deductions, rounding). Clamp instead
         // of failing so "max payment" works reliably.
         let payment_amount = std::cmp::min(amount, total_owed);
@@ -434,8 +511,9 @@ pub fn make_payment_with_distribution<'info>(
             payment_amount,
         )?;
 
-        // Apply payment: first to interest, then to principal
+        // Apply payment: first to interest-like fees, then to principal when allowed.
         let mut interest_payment = 0u64;
+        let mut standby_fee_payment = 0u64;
         let mut principal_payment = 0u64;
 
         if contract.accrued_interest > 0 {
@@ -452,14 +530,47 @@ pub fn make_payment_with_distribution<'info>(
                 .checked_sub(interest_payment)
                 .ok_or(StendarError::ArithmeticOverflow)?;
 
-            if remaining_payment > 0 {
+            if contract.is_revolving {
+                if remaining_payment > 0 && contract.accrued_standby_fees > 0 {
+                    standby_fee_payment =
+                        std::cmp::min(remaining_payment, contract.accrued_standby_fees);
+                    contract.accrued_standby_fees = contract
+                        .accrued_standby_fees
+                        .checked_sub(standby_fee_payment)
+                        .ok_or(StendarError::ArithmeticOverflow)?;
+                    state.total_interest_paid = state
+                        .total_interest_paid
+                        .checked_add(standby_fee_payment)
+                        .ok_or(StendarError::ArithmeticOverflow)?;
+                }
+            } else if remaining_payment > 0 {
                 principal_payment = remaining_payment;
             }
         } else {
-            principal_payment = payment_amount;
+            if contract.is_revolving {
+                standby_fee_payment = std::cmp::min(payment_amount, contract.accrued_standby_fees);
+                contract.accrued_standby_fees = contract
+                    .accrued_standby_fees
+                    .checked_sub(standby_fee_payment)
+                    .ok_or(StendarError::ArithmeticOverflow)?;
+                state.total_interest_paid = state
+                    .total_interest_paid
+                    .checked_add(standby_fee_payment)
+                    .ok_or(StendarError::ArithmeticOverflow)?;
+            } else {
+                principal_payment = payment_amount;
+            }
         }
 
-        let principal_allocation = apply_principal_allocation(contract, principal_payment)?;
+        let principal_allocation = if contract.is_revolving {
+            if principal_payment > 0 {
+                return Err(StendarError::RevolvingPaymentMustUseRepay.into());
+            }
+            contract.outstanding_balance = contract.drawn_amount;
+            PrincipalAllocation::default()
+        } else {
+            apply_principal_allocation(contract, principal_payment)?
+        };
 
         // Distribute payment to lender escrows proportionally.
         let total_funded = contract.funded_amount;
@@ -552,7 +663,9 @@ pub fn make_payment_with_distribution<'info>(
             let lender_interest = calculate_lender_share(
                 contribution.contribution_amount,
                 total_funded,
-                interest_payment,
+                interest_payment
+                    .checked_add(standby_fee_payment)
+                    .ok_or(StendarError::ArithmeticOverflow)?,
                 lender_index,
                 contribution_count,
                 interest_distributed,
@@ -691,7 +804,12 @@ pub fn make_payment_with_distribution<'info>(
         );
 
         // Check if loan is fully paid
-        if contract.outstanding_balance == 0 && contract.accrued_interest == 0 {
+        let completed = if contract.is_revolving {
+            check_revolving_completion(contract)
+        } else {
+            contract.outstanding_balance == 0 && contract.accrued_interest == 0
+        };
+        if completed {
             contract.status = ContractStatus::Completed;
 
             // Return only tracked collateral amount, never the whole account balance.
@@ -884,6 +1002,16 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            is_revolving: false,
+            credit_limit: 0,
+            drawn_amount: 0,
+            available_amount: 0,
+            standby_fee_rate: 0,
+            accrued_standby_fees: 0,
+            last_standby_fee_update: 0,
+            total_draws: 0,
+            total_standby_fees_paid: 0,
+            revolving_closed: false,
             _reserved: [0u8; RESERVED_TAIL_BYTES],
         }
     }

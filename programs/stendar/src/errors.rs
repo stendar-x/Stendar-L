@@ -31,6 +31,22 @@ pub enum StendarError {
     InvalidPaymentAmount,
     #[msg("Invalid interest rate")]
     InvalidInterestRate,
+    #[msg("Invalid standby fee rate")]
+    InvalidStandbyFeeRate,
+    #[msg("Contract is not configured as revolving")]
+    RevolvingNotEnabled,
+    #[msg("Revolving facility is already closed")]
+    RevolvingFacilityClosed,
+    #[msg("Requested draw exceeds available amount")]
+    DrawExceedsAvailable,
+    #[msg("Draw would breach configured LTV constraints")]
+    RevolvingLtvBreach,
+    #[msg("Revolving contracts require NoFixedPayment principal mode")]
+    RevolvingPrincipalPaymentNotAllowed,
+    #[msg("Revolving principal repayment must use repay_revolving")]
+    RevolvingPaymentMustUseRepay,
+    #[msg("Operation is not allowed after contract maturity")]
+    PastMaturity,
     #[msg("Fee exceeds configured maximum")]
     FeeTooHigh,
     #[msg("Contribution exceeds target amount")]

@@ -5,8 +5,8 @@ use crate::state::{
     PlatformPauseToggled, PlatformStats, CURRENT_ACCOUNT_VERSION, TREASURY_SEED,
 };
 use crate::utils::{
-    calculate_reimbursement, process_automatic_interest, process_scheduled_principal_payments,
-    require_current_version,
+    calculate_reimbursement, check_revolving_completion, checkpoint_standby_fees,
+    process_automatic_interest, process_scheduled_principal_payments, require_current_version,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::get_associated_token_address;
@@ -160,20 +160,31 @@ pub fn automated_interest_transfer<'info>(
         let contract = &mut ctx.accounts.contract;
         require_current_version(contract.account_version)?;
         require_current_version(ctx.accounts.treasury.account_version)?;
+        if contract.is_revolving {
+            require!(
+                contract.status == ContractStatus::Active
+                    || contract.status == ContractStatus::PendingRecall,
+                StendarError::ContractNotFunded
+            );
+            checkpoint_standby_fees(contract, current_time)?;
+            if contract.drawn_amount > 0 {
+                process_automatic_interest(contract, current_time)?;
+            }
+        } else {
+            require!(
+                contract.status == ContractStatus::Active,
+                StendarError::ContractNotFunded
+            );
 
-        require!(
-            contract.status == ContractStatus::Active,
-            StendarError::ContractNotFunded
-        );
+            // Check due status before processing accrual updates.
+            require!(
+                contract.is_interest_payment_due(current_time),
+                StendarError::PaymentNotDue
+            );
 
-        // Check due status before processing accrual updates.
-        require!(
-            contract.is_interest_payment_due(current_time),
-            StendarError::PaymentNotDue
-        );
-
-        // Update contract state to calculate current interest
-        process_automatic_interest(contract, current_time)?;
+            // Update contract state to calculate current interest
+            process_automatic_interest(contract, current_time)?;
+        }
     }
 
     let contract_key = ctx.accounts.contract.key();
@@ -483,6 +494,12 @@ pub fn automated_interest_transfer<'info>(
         }
         contract.accrued_interest = 0; // Reset after distribution
         contract.last_interest_update = current_time;
+        if contract.is_revolving {
+            contract.outstanding_balance = contract.drawn_amount;
+            if check_revolving_completion(contract) {
+                contract.status = ContractStatus::Completed;
+            }
+        }
 
         // Update bot tracking after interest processing
         contract.update_bot_tracking(current_time);
