@@ -162,6 +162,7 @@ mod tests {
     use crate::state::{
         InterestPaymentType, PaymentFrequency, PrincipalPaymentType, CURRENT_ACCOUNT_VERSION,
         DEBT_CONTRACT_RESERVED_BYTES, LENDER_CONTRIBUTION_RESERVED_BYTES,
+        MIGRATION_RESERVE_BYTES,
     };
     use anchor_lang::prelude::Pubkey;
 
@@ -209,6 +210,7 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
             _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
             account_version: CURRENT_ACCOUNT_VERSION,
         }

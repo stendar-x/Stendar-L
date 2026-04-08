@@ -79,6 +79,7 @@ export interface ParsedContractAccount {
   recallRequested: boolean | null;
   recallRequestedAt: string | null;
   recallRequestedBy: string | null;
+  migrationReserveHex?: string;
 }
 
 export interface ParsedContributionAccount {

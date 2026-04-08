@@ -398,6 +398,7 @@ fn create_mock_contracts(
                 recall_requested: false,
                 recall_requested_at: 0,
                 recall_requested_by: Pubkey::default(),
+                _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
                 _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
                 account_version: CURRENT_ACCOUNT_VERSION,
             }

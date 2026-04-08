@@ -31,8 +31,9 @@ pub const POOL_SEED: &[u8] = b"pool";
 pub const POOL_DEPOSIT_SEED: &[u8] = b"pool_deposit";
 pub const POOL_OPERATOR_SEED: &[u8] = b"pool_operator";
 pub const PENDING_POOL_CHANGE_SEED: &[u8] = b"pending_pool_change";
-pub const CURRENT_ACCOUNT_VERSION: u16 = 1;
+pub const CURRENT_ACCOUNT_VERSION: u16 = 2;
 pub const DEBT_CONTRACT_RESERVED_BYTES: usize = 44;
+pub const MIGRATION_RESERVE_BYTES: usize = 128;
 pub const LENDER_CONTRIBUTION_RESERVED_BYTES: usize = 24;
 pub const LENDER_ESCROW_RESERVED_BYTES: usize = 32;
 pub const APPROVED_FUNDER_RESERVED_BYTES: usize = 32;
@@ -258,6 +259,8 @@ pub struct DebtContract {
     pub recall_requested: bool,            // Whether a demand recall is pending
     pub recall_requested_at: i64,          // Recall request timestamp (0 if none)
     pub recall_requested_by: Pubkey,       // Lender who requested recall
+    /// Reserved tail space for future additive migrations.
+    pub _migration_reserve: [u8; MIGRATION_RESERVE_BYTES],
 }
 
 impl DebtContract {
@@ -299,7 +302,8 @@ impl DebtContract {
         + 8
         + DEBT_CONTRACT_RESERVED_BYTES
         + 2;
-    pub const ADDITIONAL_LAYOUT_LEN: usize = 1 + 32 + 32 + 8 + 2 + 32 + 32 + 1 + 8 + 32;
+    pub const ADDITIONAL_LAYOUT_LEN: usize =
+        1 + 32 + 32 + 8 + 2 + 32 + 32 + 1 + 8 + 32 + MIGRATION_RESERVE_BYTES;
     pub const LEN: usize = Self::BASE_LAYOUT_LEN + Self::ADDITIONAL_LAYOUT_LEN;
 
     fn reserved_fields(&self) -> DebtContractReservedFields {
@@ -717,6 +721,7 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
             _reserved: [0u8; DEBT_CONTRACT_RESERVED_BYTES],
             account_version: CURRENT_ACCOUNT_VERSION,
         }
@@ -814,12 +819,19 @@ mod tests {
     #[test]
     fn debt_contract_len_matches_base_plus_appended_fields() {
         assert_eq!(DebtContract::BASE_LAYOUT_LEN, 699);
-        assert_eq!(DebtContract::ADDITIONAL_LAYOUT_LEN, 180);
-        assert_eq!(DebtContract::LEN, 879);
+        assert_eq!(DebtContract::ADDITIONAL_LAYOUT_LEN, 308);
+        assert_eq!(DebtContract::LEN, 1007);
 
         let contract = sample_standard_contract();
         let serialized = contract.try_to_vec().expect("serialize contract");
         assert_eq!(serialized.len() + 8, DebtContract::LEN);
+    }
+
+    #[test]
+    fn debt_contract_len_includes_migration_reserve() {
+        let expected_with_reserve = 1 + 32 + 32 + 8 + 2 + 32 + 32 + 1 + 8 + 32 + 128;
+        assert_eq!(MIGRATION_RESERVE_BYTES, 128);
+        assert_eq!(DebtContract::ADDITIONAL_LAYOUT_LEN, expected_with_reserve);
     }
 
     #[test]
@@ -984,6 +996,15 @@ pub struct ContractFunded {
     pub contract: Pubkey,
     pub lender: Pubkey,
     pub amount: u64,
+}
+
+#[event]
+pub struct ContractMigrated {
+    pub contract: Pubkey,
+    pub from_version: u16,
+    pub to_version: u16,
+    pub old_len: u32,
+    pub new_len: u32,
 }
 
 #[event]

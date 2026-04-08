@@ -216,6 +216,10 @@ pub mod stendar {
         )
     }
 
+    pub fn migrate_contract(ctx: Context<MigrateContract>) -> Result<()> {
+        instructions::migrate_contract(ctx)
+    }
+
     pub fn approve_funder(ctx: Context<ApproveFunder>) -> Result<()> {
         instructions::approve_funder(ctx)
     }

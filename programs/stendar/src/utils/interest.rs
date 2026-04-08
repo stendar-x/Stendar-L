@@ -157,7 +157,8 @@ pub fn calculate_interest(principal: u64, rate: u64, time_elapsed: i64) -> Resul
 mod tests {
     use super::*;
     use crate::state::{
-        FundingAccessMode, LoanType, PaymentFrequency, DEBT_CONTRACT_RESERVED_BYTES,
+        FundingAccessMode, LoanType, PaymentFrequency, CURRENT_ACCOUNT_VERSION,
+        DEBT_CONTRACT_RESERVED_BYTES, MIGRATION_RESERVE_BYTES,
     };
 
     fn sample_contract() -> DebtContract {
@@ -206,8 +207,10 @@ mod tests {
             recall_requested: false,
             recall_requested_at: 0,
             recall_requested_by: Pubkey::default(),
+            _migration_reserve: [0u8; MIGRATION_RESERVE_BYTES],
         };
         contract.set_funding_access_mode(FundingAccessMode::Public);
+        contract.account_version = CURRENT_ACCOUNT_VERSION;
         contract
     }
 
