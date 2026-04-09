@@ -141,7 +141,7 @@ function buildContractCurrentFullBuffer(): Buffer {
   w.writeU64(7n); // proposal_count
   w.writeU64(321n); // uncollectable_balance
   w.writeU64(654n); // total_prepayment_fees
-  w.writeU16(2); // account_version
+  w.writeU16(1); // account_version
 
   // Appended fields
   w.writeU8(2); // contract_version
@@ -364,7 +364,7 @@ test('parseContractAccount handles current layout', () => {
   assert.equal(contract?.uncollectableBalanceRaw, '321');
   assert.equal(contract?.totalPrepaymentFeesRaw, '654');
   assert.equal(contract?.contractVersion, 2);
-  assert.equal(contract?.accountVersion, 2);
+  assert.equal(contract?.accountVersion, 1);
   assert.equal(contract?.isRevolving, true);
   assert.equal(contract?.standbyFeeRate, 225);
   assert.equal(contract?.drawnAmountRaw, '350000');

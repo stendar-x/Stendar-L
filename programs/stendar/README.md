@@ -137,13 +137,8 @@ make_payment(
 
 ### Account Versioning and Migration
 
-- `CURRENT_ACCOUNT_VERSION` is `2` in this release.
-- Any version `1` account will fail runtime validation with `AccountNeedsMigration`.
-- Migration strategy for existing contracts:
-  1. Read the v1 account and capture all fields (including lender contribution keys).
-  2. Allocate the v2 account using `DebtContract::space(max_lenders)` and the corresponding proposal space rule.
-  3. Rewrite the account data in v2 layout (`ltv_ratio`/`ltv_floor_bps` as `u32`, reserve tail expanded), then set `account_version = 2`.
-  4. Switch all downstream indexers/services to the v2 layout before enabling new writes.
+- `CURRENT_ACCOUNT_VERSION` is `1` in this release.
+- Future layout changes will bump the version and require a migration path for existing accounts.
 
 ## Development
 
