@@ -81,7 +81,7 @@ Both `create_trade_listing` and `transfer_lender_position` support partial amoun
 
 - **Minimum listing/transfer amount**: Must be at least `MIN_LISTING_AMOUNT` (defined in `state/mod.rs`).
 - **Minimum remainder**: If a partial listing/transfer leaves a remainder, that remainder must also be at least `MIN_LISTING_AMOUNT`. This prevents dust positions.
-- **Lender cap**: Partial trades create a new `LenderContribution` account, so `num_contributions` is incremented and checked against `max_lenders` (defaults to `MAX_LENDERS_PER_TX = 14` if unset). Full transfers are a 1-for-1 swap and do not increment the count.
+- **Lender cap**: Partial trades create a new `LenderContribution` account, so `num_contributions` is incremented and checked against `max_lenders` (borrower-selected at creation, protocol-capped at 100). For legacy contracts where `max_lenders` is unset (`0`), the fallback remains `MAX_LENDERS_PER_TX = 14`. Full transfers are a 1-for-1 swap and do not increment the count.
 - **Escrow splitting**: `compute_transfer_computation` proportionally divides `escrow_amount`, `available_interest`, and `available_principal` between seller and buyer based on the transfer ratio.
 - **Offer matching**: Offers must match the listing amount exactly — partial offers against a listing are not supported.
 

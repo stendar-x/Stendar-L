@@ -549,6 +549,7 @@ describe("Pool auto-expiration", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         toBn(targetAmount),
         toBn(900),
         30,
@@ -560,7 +561,6 @@ describe("Pool auto-expiration", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,

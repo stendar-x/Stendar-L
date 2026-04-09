@@ -31,8 +31,9 @@ pub const POOL_SEED: &[u8] = b"pool";
 pub const POOL_DEPOSIT_SEED: &[u8] = b"pool_deposit";
 pub const POOL_OPERATOR_SEED: &[u8] = b"pool_operator";
 pub const PENDING_POOL_CHANGE_SEED: &[u8] = b"pending_pool_change";
-pub const CURRENT_ACCOUNT_VERSION: u16 = 1;
-pub const RESERVED_TAIL_BYTES: usize = 38;
+pub const CURRENT_ACCOUNT_VERSION: u16 = 2;
+pub const MAX_PROTOCOL_LENDERS: u16 = 100;
+pub const RESERVED_TAIL_BYTES: usize = 64;
 pub const LENDER_CONTRIBUTION_RESERVED_BYTES: usize = 24;
 pub const LENDER_ESCROW_RESERVED_BYTES: usize = 32;
 pub const APPROVED_FUNDER_RESERVED_BYTES: usize = 32;
@@ -157,7 +158,7 @@ pub struct DebtContract {
     pub term_days: u32,
     pub collateral_amount: u64,
     pub loan_type: LoanType,
-    pub ltv_ratio: u64,
+    pub ltv_ratio: u32,
     pub interest_payment_type: InterestPaymentType,
     pub principal_payment_type: PrincipalPaymentType,
     pub interest_frequency: PaymentFrequency,
@@ -205,7 +206,7 @@ pub struct DebtContract {
     pub collateral_mint: Pubkey,           // SPL token mint used as collateral
     pub collateral_token_account: Pubkey,  // ATA holding collateral for this contract
     pub collateral_value_at_creation: u64, // USDC value of collateral at creation
-    pub ltv_floor_bps: u16,                // Borrower-set minimum LTV in basis points
+    pub ltv_floor_bps: u32,                // Borrower-set minimum LTV in basis points
     pub loan_mint: Pubkey,                 // USDC mint for contracts
     pub loan_token_account: Pubkey,        // Contract's USDC ATA
     pub recall_requested: bool,            // Whether a demand recall is pending
@@ -238,7 +239,9 @@ pub struct DebtContract {
 impl DebtContract {
     // NOTE: Keep this in sync with the deployed on-chain account layout / IDL.
     // The production `DebtContract` account does not include a `processing` flag.
-    pub const LEN: usize = 8
+    pub const LEGACY_CONTRIBUTION_SLOTS: u16 = 14;
+    pub const CONTRIBUTION_KEY_BYTES: usize = 32;
+    pub const BASE_LEN: usize = 8
         + 32
         + 8
         + 8
@@ -247,7 +250,7 @@ impl DebtContract {
         + 4
         + 8
         + 1
-        + 8
+        + 4
         + 1
         + 1
         + 1
@@ -261,7 +264,6 @@ impl DebtContract {
         + 8
         + 8
         + 4
-        + (32 * 14)
         + 8
         + 8
         + 8
@@ -282,7 +284,7 @@ impl DebtContract {
         + 32
         + 32
         + 8
-        + 2
+        + 4
         + 32
         + 32
         + 1
@@ -299,6 +301,11 @@ impl DebtContract {
         + 8
         + 1
         + RESERVED_TAIL_BYTES;
+    pub const LEN: usize = Self::space(Self::LEGACY_CONTRIBUTION_SLOTS);
+
+    pub const fn space(max_lenders: u16) -> usize {
+        Self::BASE_LEN + (Self::CONTRIBUTION_KEY_BYTES * max_lenders as usize)
+    }
 
     pub fn increment_proposal_count(&mut self) -> Result<u64> {
         let next = self
@@ -571,7 +578,9 @@ mod tests {
     use super::*;
 
     fn max_contributions() -> Vec<Pubkey> {
-        (0..14).map(|_| Pubkey::new_unique()).collect()
+        (0..usize::from(DebtContract::LEGACY_CONTRIBUTION_SLOTS))
+            .map(|_| Pubkey::new_unique())
+            .collect()
     }
 
     fn sample_standard_contract() -> DebtContract {
@@ -729,11 +738,29 @@ mod tests {
 
     #[test]
     fn debt_contract_len_matches_layout() {
-        assert_eq!(DebtContract::LEN, 957);
+        assert_eq!(
+            DebtContract::space(1),
+            DebtContract::BASE_LEN + DebtContract::CONTRIBUTION_KEY_BYTES
+        );
+        assert_eq!(
+            DebtContract::space(14),
+            DebtContract::BASE_LEN + (DebtContract::CONTRIBUTION_KEY_BYTES * 14)
+        );
+        assert_eq!(
+            DebtContract::space(100),
+            DebtContract::BASE_LEN + (DebtContract::CONTRIBUTION_KEY_BYTES * 100)
+        );
+        assert_eq!(
+            DebtContract::LEN,
+            DebtContract::space(DebtContract::LEGACY_CONTRIBUTION_SLOTS)
+        );
 
         let contract = sample_standard_contract();
         let serialized = contract.try_to_vec().expect("serialize contract");
-        assert_eq!(serialized.len() + 8, DebtContract::LEN);
+        assert_eq!(
+            serialized.len() + 8,
+            DebtContract::space(contract.max_lenders)
+        );
     }
 
     #[test]

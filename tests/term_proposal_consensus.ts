@@ -282,6 +282,7 @@ describe("Term proposal consensus", () => {
   async function createActiveSingleLenderContract(
     seed: number,
     loanType: "demand" | "committed" = "committed",
+    maxLenders = 14,
   ): Promise<ContractFixture> {
     const borrower = anchor.web3.Keypair.generate();
     const lender = anchor.web3.Keypair.generate();
@@ -312,18 +313,18 @@ describe("Term proposal consensus", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        maxLenders,
         targetAmount,
         new anchor.BN(900),
         90,
         collateralAmount,
         loanType === "demand" ? { demand: {} } : { committed: {} },
-        new anchor.BN(11_000),
+        11_000,
         11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -451,18 +452,18 @@ describe("Term proposal consensus", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(900),
         90,
         collateralAmount,
         { demand: {} },
-        new anchor.BN(11_000),
+        11_000,
         11_000,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -663,7 +664,7 @@ describe("Term proposal consensus", () => {
         null,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
-        new anchor.BN(11_000),
+        11_000,
         11_000,
         recallOnRejection,
       )
@@ -754,6 +755,19 @@ describe("Term proposal consensus", () => {
 
     const contractAfterVote = await program.account.debtContract.fetch(fixture.contractPda);
     assert.equal(contractAfterVote.termDays, 45);
+  });
+
+  it("allocates proposal account space for high max_lenders contracts", async () => {
+    const fixture = await createActiveSingleLenderContract(8_123, "committed", 100);
+    const proposalPda = await createProposal(fixture, 1, fixture.borrower, 45);
+
+    const contract = await program.account.debtContract.fetch(fixture.contractPda);
+    assert.equal(contract.maxLenders, 100);
+
+    const proposalInfo = await connection.getAccountInfo(proposalPda, "confirmed");
+    assert.isNotNull(proposalInfo, "proposal account should exist");
+    const participantCapacityBytes = 32 * (contract.maxLenders + 1);
+    assert.isAtLeast(proposalInfo!.data.length, participantCapacityBytes);
   });
 
   it("rejects proposal and enforces proposer cooldown", async () => {
@@ -1530,7 +1544,7 @@ describe("Term proposal consensus", () => {
         null,
         { outstandingBalance: {} },
         { noFixedPayment: {} },
-        new anchor.BN(11_000),
+        11_000,
         11_000,
         true,
       )

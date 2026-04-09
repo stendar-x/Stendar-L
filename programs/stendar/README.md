@@ -97,19 +97,25 @@ initialize(ctx: Context<Initialize>) -> Result<()>
 create_debt_contract(
     ctx: Context<CreateDebtContract>,
     contract_seed: u64,
+    max_lenders: u16, // protocol-capped at 100
     target_amount: u64,
-    interest_rate: u64,
+    interest_rate: u32,
     term_days: u32,
     collateral_amount: u64,
     loan_type: LoanType,
-    ltv_ratio: u64,
+    ltv_ratio: u32,
+    ltv_floor_bps: u32,
     interest_payment_type: InterestPaymentType,
     principal_payment_type: PrincipalPaymentType,
     interest_frequency: PaymentFrequency,
     principal_frequency: Option<PaymentFrequency>,
-    max_lenders: u16,
     partial_funding_enabled: bool,
+    allow_partial_fill: bool,
+    min_partial_fill_bps: u16,
+    is_revolving: bool,
+    standby_fee_rate: u32,
     distribution_method: DistributionMethod,
+    funding_access_mode: FundingAccessMode,
 ) -> Result<()>
 ```
 
@@ -128,6 +134,16 @@ make_payment(
     amount: u64,
 ) -> Result<()>
 ```
+
+### Account Versioning and Migration
+
+- `CURRENT_ACCOUNT_VERSION` is `2` in this release.
+- Any version `1` account will fail runtime validation with `AccountNeedsMigration`.
+- Migration strategy for existing contracts:
+  1. Read the v1 account and capture all fields (including lender contribution keys).
+  2. Allocate the v2 account using `DebtContract::space(max_lenders)` and the corresponding proposal space rule.
+  3. Rewrite the account data in v2 layout (`ltv_ratio`/`ltv_floor_bps` as `u32`, reserve tail expanded), then set `account_version = 2`.
+  4. Switch all downstream indexers/services to the v2 layout before enabling new writes.
 
 ## Development
 

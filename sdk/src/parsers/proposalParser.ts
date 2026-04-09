@@ -60,10 +60,10 @@ export function parseProposalAccount(data: Buffer): ParsedProposalAccount | null
     );
     offset += 1;
 
-    const proposedLtvRatioBps = readU64(data, offset);
-    offset += 8;
-    const proposedLtvFloorBps = readU16(data, offset);
-    offset += 2;
+    const proposedLtvRatioBps = readU32(data, offset);
+    offset += 4;
+    const proposedLtvFloorBps = readU32(data, offset);
+    offset += 4;
 
     const participantLength = readU32(data, offset);
     offset += 4;

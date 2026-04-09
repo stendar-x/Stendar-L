@@ -126,7 +126,7 @@ pub fn validate_trade_conditions(
     Ok(true)
 }
 
-fn calculate_risk_adjustment(days_remaining: u32, loan_type: LoanType, ltv_ratio: u64) -> u16 {
+fn calculate_risk_adjustment(days_remaining: u32, loan_type: LoanType, ltv_ratio: u32) -> u16 {
     let base_rate: u128 = match loan_type {
         LoanType::Committed => 10000,
         LoanType::Demand => 9800,

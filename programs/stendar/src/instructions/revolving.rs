@@ -173,7 +173,7 @@ pub fn draw_from_revolving<'info>(
             .ok_or(StendarError::ArithmeticOverflow)?;
         let current_ltv = calculate_ltv_bps(collateral_value, next_drawn)?;
         require!(
-            current_ltv <= ctx.accounts.contract.ltv_ratio as u32,
+            current_ltv <= ctx.accounts.contract.ltv_ratio,
             StendarError::RevolvingLtvBreach
         );
     }

@@ -2534,6 +2534,10 @@
           "type": "u64"
         },
         {
+          "name": "max_lenders",
+          "type": "u16"
+        },
+        {
           "name": "target_amount",
           "type": "u64"
         },
@@ -2559,11 +2563,11 @@
         },
         {
           "name": "ltv_ratio",
-          "type": "u64"
+          "type": "u32"
         },
         {
           "name": "ltv_floor_bps",
-          "type": "u16"
+          "type": "u32"
         },
         {
           "name": "interest_payment_type",
@@ -2598,10 +2602,6 @@
               }
             }
           }
-        },
-        {
-          "name": "max_lenders",
-          "type": "u16"
         },
         {
           "name": "partial_funding_enabled",
@@ -3097,11 +3097,11 @@
         },
         {
           "name": "proposed_ltv_ratio",
-          "type": "u64"
+          "type": "u32"
         },
         {
           "name": "proposed_ltv_floor_bps",
-          "type": "u16"
+          "type": "u32"
         },
         {
           "name": "recall_on_rejection",
@@ -8169,7 +8169,7 @@
     {
       "code": 6006,
       "name": "MaxLendersReached",
-      "msg": "Maximum number of lenders reached for this contract"
+      "msg": "Maximum number of lenders reached for this contract's configured cap"
     },
     {
       "code": 6007,
@@ -8194,7 +8194,7 @@
     {
       "code": 6011,
       "name": "InvalidMaxLenders",
-      "msg": "Invalid max lenders value"
+      "msg": "Invalid max lenders value (must be between 1 and protocol max)"
     },
     {
       "code": 6012,
@@ -9238,7 +9238,7 @@
           },
           {
             "name": "ltv_ratio",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "interest_payment_type",
@@ -9438,7 +9438,7 @@
           },
           {
             "name": "ltv_floor_bps",
-            "type": "u16"
+            "type": "u32"
           },
           {
             "name": "loan_mint",
@@ -9538,7 +9538,7 @@
             "type": {
               "array": [
                 "u8",
-                38
+                64
               ]
             }
           }
@@ -10605,11 +10605,11 @@
           },
           {
             "name": "proposed_ltv_ratio",
-            "type": "u64"
+            "type": "u32"
           },
           {
             "name": "proposed_ltv_floor_bps",
-            "type": "u16"
+            "type": "u32"
           },
           {
             "name": "participant_keys",

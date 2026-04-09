@@ -378,6 +378,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(1000),
         30,
@@ -389,7 +390,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -465,6 +465,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -476,7 +477,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -582,6 +582,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -593,7 +594,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -680,6 +680,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        1,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -691,7 +692,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        1,
         true,
         false,
         0,
@@ -749,6 +749,69 @@ describe("Lending lifecycle", () => {
     }
   });
 
+  it("creates contracts with variable max_lenders account sizing", async () => {
+    const borrower = anchor.web3.Keypair.generate();
+    await airdropSol(connection, borrower, 0.2);
+
+    const targetAmount = toBn(1_000_000n);
+    const collateralAmount = toBn(200_000_000n);
+    const maxLenderCases = [1, 14, 50, 100];
+    let inferredBaseLen: number | null = null;
+
+    for (const [index, maxLenders] of maxLenderCases.entries()) {
+      const contractSeed = new anchor.BN(26_100 + index);
+      const [contractPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("debt_contract"), borrower.publicKey.toBuffer(), u64ToLeBytes(contractSeed)],
+        program.programId,
+      );
+      const [operationsFundPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("operations_fund"), contractPda.toBuffer()],
+        program.programId,
+      );
+      const accts = await createContractAccounts(borrower, contractPda, 1_000_000n, 200_000_000n);
+
+      await program.methods
+        .createDebtContract(
+          contractSeed,
+          maxLenders,
+          targetAmount,
+          new anchor.BN(500),
+          30,
+          collateralAmount,
+          { committed: {} },
+          11_000,
+          11_000,
+          { outstandingBalance: {} },
+          { noFixedPayment: {} },
+          { weekly: {} },
+          null,
+          true,
+          false,
+          0,
+          { manual: {} },
+          { public: {} },
+        )
+        .accounts(contractCreateAccounts(contractPda, operationsFundPda, borrower.publicKey, accts))
+        .signers([borrower])
+        .rpc();
+
+      const contract = await program.account.debtContract.fetch(contractPda);
+      const operationsFund = await program.account.contractOperationsFund.fetch(operationsFundPda);
+      assert.equal(contract.maxLenders, maxLenders);
+      assert.equal(operationsFund.maxLenders, maxLenders);
+
+      const contractInfo = await connection.getAccountInfo(contractPda, "confirmed");
+      assert.isNotNull(contractInfo, "contract account should exist");
+      const baseLen = contractInfo!.data.length - (32 * maxLenders);
+      if (inferredBaseLen === null) {
+        inferredBaseLen = baseLen;
+      } else {
+        assert.equal(baseLen, inferredBaseLen);
+      }
+    }
+    assert.isNotNull(inferredBaseLen);
+  });
+
   it("Rejects underfunding on the last lender slot", async () => {
     const borrower = anchor.web3.Keypair.generate();
     const lender1 = anchor.web3.Keypair.generate();
@@ -784,6 +847,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        2, // max_lenders
         toBn(targetUsdc),
         new anchor.BN(500),
         30,
@@ -795,7 +859,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        2, // max_lenders
         true, // partial_funding_enabled
         false,
         0,
@@ -935,6 +998,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        2, // max_lenders
         toBn(targetUsdc),
         new anchor.BN(500),
         30,
@@ -946,7 +1010,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        2, // max_lenders
         true, // partial_funding_enabled
         false,
         0,
@@ -1067,6 +1130,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -1078,7 +1142,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { daily: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1125,6 +1188,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         0,
@@ -1136,7 +1200,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1218,6 +1281,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         0,
@@ -1229,7 +1293,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1322,6 +1385,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -1333,7 +1397,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1430,6 +1493,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -1441,7 +1505,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         false,
         false,
         0,
@@ -1533,6 +1596,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         0,
@@ -1544,7 +1608,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1643,6 +1706,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -1654,7 +1718,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1724,6 +1787,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(500),
         30,
@@ -1735,7 +1799,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1815,6 +1878,7 @@ describe("Lending lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         toBn(1_500_000n),
         new anchor.BN(500),
         30,
@@ -1826,7 +1890,6 @@ describe("Lending lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,

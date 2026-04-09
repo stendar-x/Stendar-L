@@ -398,6 +398,7 @@ describe("Revolving lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         toBn(1_200),
         30,
@@ -409,7 +410,6 @@ describe("Revolving lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -678,6 +678,7 @@ describe("Revolving lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         toBn(600),
         30,
@@ -689,7 +690,6 @@ describe("Revolving lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,

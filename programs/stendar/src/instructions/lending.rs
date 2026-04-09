@@ -5,7 +5,7 @@ use crate::state::{
     ContractStatus, ContributionWithdrawn, DebtContract, DistributionMethod, FundingAccessMode,
     InterestPaymentType, LenderContribution, LenderEscrow, LoanType, PaymentFrequency,
     PrincipalPaymentType, State, TestClockOffset, APPROVED_FUNDER_RESERVED_BYTES,
-    CURRENT_ACCOUNT_VERSION, DEMAND_LOAN_MIN_FLOOR_BPS,
+    CURRENT_ACCOUNT_VERSION, DEMAND_LOAN_MIN_FLOOR_BPS, MAX_PROTOCOL_LENDERS,
     LENDER_CONTRIBUTION_RESERVED_BYTES, LENDER_ESCROW_RESERVED_BYTES, LIQUIDATION_FEE_BPS,
     OPERATIONS_FUND_SEED, PARTIAL_LIQUIDATION_CAP_BPS, RECALL_FEE_BPS,
     RECALL_GRACE_PERIOD_SECONDS, RESERVED_TAIL_BYTES,
@@ -413,18 +413,18 @@ pub fn initialize_state(ctx: Context<Initialize>) -> Result<()> {
 pub fn create_debt_contract(
     ctx: Context<CreateDebtContract>,
     contract_seed: u64,
+    max_lenders: u16,
     target_amount: u64,
     interest_rate: u32,
     term_days: u32,
     collateral_amount: u64,
     loan_type: LoanType,
-    ltv_ratio: u64,
-    ltv_floor_bps: u16,
+    ltv_ratio: u32,
+    ltv_floor_bps: u32,
     interest_payment_type: InterestPaymentType,
     principal_payment_type: PrincipalPaymentType,
     interest_frequency: PaymentFrequency,
     principal_frequency: Option<PaymentFrequency>,
-    max_lenders: u16,
     partial_funding_enabled: bool,
     allow_partial_fill: bool,
     min_partial_fill_bps: u16,
@@ -442,12 +442,7 @@ pub fn create_debt_contract(
     require!(interest_rate > 0, StendarError::InvalidInterestRate);
     require!(interest_rate <= 10000, StendarError::InvalidInterestRate);
     require!(term_days <= 3650, StendarError::InvalidPaymentAmount);
-    require!(ltv_ratio <= 100_000, StendarError::InvalidPaymentAmount);
-    require!(ltv_floor_bps <= 65_500, StendarError::InvalidPaymentAmount);
-    require!(
-        (ltv_floor_bps as u64) <= ltv_ratio,
-        StendarError::InvalidPaymentAmount
-    );
+    require!(ltv_floor_bps <= ltv_ratio, StendarError::InvalidPaymentAmount);
     if ltv_ratio == 0 {
         require!(
             collateral_amount == 0,
@@ -473,7 +468,7 @@ pub fn create_debt_contract(
         }
     }
     require!(
-        max_lenders > 0 && max_lenders <= MAX_LENDERS_PER_TX,
+        max_lenders > 0 && max_lenders <= MAX_PROTOCOL_LENDERS,
         StendarError::InvalidMaxLenders
     );
     if allow_partial_fill {
@@ -768,12 +763,12 @@ pub fn create_debt_contract(
         if ltv_floor_bps > 0 {
             if loan_type == LoanType::Demand {
                 require!(
-                    ltv_floor_bps >= DEMAND_LOAN_MIN_FLOOR_BPS,
+                    ltv_floor_bps >= DEMAND_LOAN_MIN_FLOOR_BPS as u32,
                     StendarError::DemandLoanFloorTooLow
                 );
             } else {
                 require!(
-                    ltv_floor_bps >= collateral_type.min_committed_floor_bps,
+                    ltv_floor_bps >= collateral_type.min_committed_floor_bps as u32,
                     StendarError::LtvFloorBelowMinimum
                 );
             }
@@ -817,10 +812,10 @@ pub fn create_debt_contract(
         if ltv_floor_bps > 0 {
             let current_ltv_bps = calculate_ltv_bps(collateral_value_at_creation, target_amount)?;
             let min_required_ltv_bps = ltv_floor_bps
-                .checked_add(collateral_type.liquidation_buffer_bps)
+                .checked_add(collateral_type.liquidation_buffer_bps as u32)
                 .ok_or(StendarError::ArithmeticOverflow)?;
             require!(
-                current_ltv_bps >= min_required_ltv_bps as u32,
+                current_ltv_bps >= min_required_ltv_bps,
                 StendarError::InsufficientCollateral
             );
         }
