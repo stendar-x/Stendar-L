@@ -9,7 +9,7 @@ use crate::state::{
 };
 use crate::utils::{
     calculate_proportional_collateral, process_automatic_interest,
-    process_scheduled_principal_payments, require_current_version,
+    process_scheduled_principal_payments, require_current_version, MAX_LENDERS_PER_TX,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
@@ -117,8 +117,8 @@ fn validate_proposed_terms(
     proposed_principal_frequency: Option<PaymentFrequency>,
     proposed_interest_payment_type: InterestPaymentType,
     proposed_principal_payment_type: PrincipalPaymentType,
-    proposed_ltv_ratio: u64,
-    proposed_ltv_floor_bps: u16,
+    proposed_ltv_ratio: u32,
+    proposed_ltv_floor_bps: u32,
 ) -> Result<()> {
     require!(
         proposed_interest_rate > 0 && proposed_interest_rate <= 10_000,
@@ -129,15 +129,7 @@ fn validate_proposed_terms(
         StendarError::InvalidProposedTerms
     );
     require!(
-        proposed_ltv_ratio <= 100_000,
-        StendarError::InvalidProposedTerms
-    );
-    require!(
-        proposed_ltv_floor_bps <= 65_500,
-        StendarError::InvalidProposedTerms
-    );
-    require!(
-        proposed_ltv_ratio >= proposed_ltv_floor_bps as u64,
+        proposed_ltv_ratio >= proposed_ltv_floor_bps,
         StendarError::InvalidProposedTerms
     );
     if proposed_ltv_ratio == 0 {
@@ -157,7 +149,7 @@ fn validate_proposed_terms(
 
     if contract.loan_type == LoanType::Demand && proposed_ltv_floor_bps > 0 {
         require!(
-            proposed_ltv_floor_bps >= crate::state::DEMAND_LOAN_MIN_FLOOR_BPS,
+            proposed_ltv_floor_bps >= crate::state::DEMAND_LOAN_MIN_FLOOR_BPS as u32,
             StendarError::InvalidProposedTerms
         );
     }
@@ -233,8 +225,8 @@ pub fn create_term_proposal(
     proposed_principal_frequency: Option<PaymentFrequency>,
     proposed_interest_payment_type: InterestPaymentType,
     proposed_principal_payment_type: PrincipalPaymentType,
-    proposed_ltv_ratio: u64,
-    proposed_ltv_floor_bps: u16,
+    proposed_ltv_ratio: u32,
+    proposed_ltv_floor_bps: u32,
     recall_on_rejection: bool,
 ) -> Result<()> {
     require!(!ctx.accounts.state.is_paused, StendarError::PlatformPaused);
@@ -264,8 +256,14 @@ pub fn create_term_proposal(
         StendarError::NotContractParticipant
     );
     let participant_count = participant_keys.len();
+    let lender_cap = if contract.max_lenders == 0 {
+        MAX_LENDERS_PER_TX
+    } else {
+        contract.max_lenders
+    };
+    let max_participants = usize::from(lender_cap) + 1;
     require!(
-        participant_count > 0 && participant_count <= TermAmendmentProposal::MAX_PARTICIPANTS,
+        participant_count > 0 && participant_count <= max_participants,
         StendarError::InvalidProposalParticipants
     );
 

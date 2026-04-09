@@ -23,8 +23,8 @@ pub struct TermAmendmentProposal {
     pub proposed_principal_frequency: Option<PaymentFrequency>,
     pub proposed_interest_payment_type: InterestPaymentType,
     pub proposed_principal_payment_type: PrincipalPaymentType,
-    pub proposed_ltv_ratio: u64,
-    pub proposed_ltv_floor_bps: u16,
+    pub proposed_ltv_ratio: u32,
+    pub proposed_ltv_floor_bps: u32,
     /// Snapshot of wallets required to vote when the proposal is created.
     pub participant_keys: Vec<Pubkey>,
     pub total_participants: u8,
@@ -47,8 +47,9 @@ pub struct TermAmendmentProposal {
 }
 
 impl TermAmendmentProposal {
-    pub const MAX_PARTICIPANTS: usize = 15; // borrower + up to 14 lenders
-    pub const LEN: usize = 8 // discriminator
+    pub const LEGACY_MAX_PARTICIPANTS: usize = 15;
+    pub const PARTICIPANT_KEY_BYTES: usize = 32;
+    pub const BASE_LEN: usize = 8 // discriminator
         + 32 // contract
         + 32 // proposer
         + 8 // proposal_id
@@ -58,10 +59,9 @@ impl TermAmendmentProposal {
         + 2 // proposed_principal_frequency (Option<u8> max encoded size)
         + 1 // proposed_interest_payment_type
         + 1 // proposed_principal_payment_type
-        + 8 // proposed_ltv_ratio
-        + 2 // proposed_ltv_floor_bps
+        + 4 // proposed_ltv_ratio
+        + 4 // proposed_ltv_floor_bps
         + 4 // participant_keys vec len
-        + (32 * Self::MAX_PARTICIPANTS) // participant_keys
         + 1 // total_participants
         + 1 // approvals
         + 1 // rejections
@@ -75,6 +75,11 @@ impl TermAmendmentProposal {
         + 8 // recall_grace_start
         + 8 // _reserved
         + 2; // account_version
+    pub const LEN: usize = Self::space(Self::LEGACY_MAX_PARTICIPANTS);
+
+    pub const fn space(max_participants: usize) -> usize {
+        Self::BASE_LEN + (Self::PARTICIPANT_KEY_BYTES * max_participants)
+    }
 
     pub fn is_pending(&self) -> bool {
         self.status == ProposalStatus::Pending
@@ -122,5 +127,53 @@ impl ProposerCooldown {
         self.cooldown_until = 0;
         self._reserved = [0u8; 16];
         self.account_version = CURRENT_ACCOUNT_VERSION;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn term_proposal_space_matches_layout() {
+        assert_eq!(
+            TermAmendmentProposal::space(0)
+                + (TermAmendmentProposal::PARTICIPANT_KEY_BYTES
+                    * TermAmendmentProposal::LEGACY_MAX_PARTICIPANTS),
+            TermAmendmentProposal::LEN
+        );
+
+        let proposal = TermAmendmentProposal {
+            contract: Pubkey::new_unique(),
+            proposer: Pubkey::new_unique(),
+            proposal_id: 1,
+            proposed_interest_rate: 750,
+            proposed_term_days: 30,
+            proposed_interest_frequency: PaymentFrequency::Weekly,
+            proposed_principal_frequency: Some(PaymentFrequency::Monthly),
+            proposed_interest_payment_type: InterestPaymentType::OutstandingBalance,
+            proposed_principal_payment_type: PrincipalPaymentType::NoFixedPayment,
+            proposed_ltv_ratio: 11_000,
+            proposed_ltv_floor_bps: 10_000,
+            participant_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+            total_participants: 2,
+            approvals: 1,
+            rejections: 0,
+            status: ProposalStatus::Pending,
+            created_at: 1_700_000_000,
+            expires_at: 1_700_100_000,
+            resolved_at: 0,
+            recall_pledged_count: 0,
+            recall_pledged_amount: 0,
+            recalls_processed: 0,
+            recall_grace_start: 0,
+            _reserved: [0u8; 8],
+            account_version: CURRENT_ACCOUNT_VERSION,
+        };
+        let serialized = proposal.try_to_vec().expect("serialize term proposal");
+        assert_eq!(
+            serialized.len() + 8,
+            TermAmendmentProposal::space(proposal.participant_keys.len())
+        );
     }
 }

@@ -273,6 +273,7 @@ describe("stendar", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         targetAmount,
         new anchor.BN(1000),
         30,
@@ -284,7 +285,6 @@ describe("stendar", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,

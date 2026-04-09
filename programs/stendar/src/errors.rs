@@ -15,7 +15,7 @@ pub enum StendarError {
     ContractNotInDefault,
     #[msg("Invalid contribution amount")]
     InvalidContributionAmount,
-    #[msg("Maximum number of lenders reached for this contract")]
+    #[msg("Maximum number of lenders reached for this contract's configured cap")]
     MaxLendersReached,
     #[msg("Last lender slot must contribute the exact remaining amount to reach the target")]
     LastLenderMustFillRemaining,
@@ -25,7 +25,7 @@ pub enum StendarError {
     PartialFillNotAllowed,
     #[msg("Current funding is below the configured partial fill threshold")]
     BelowMinimumFillThreshold,
-    #[msg("Invalid max lenders value")]
+    #[msg("Invalid max lenders value (must be between 1 and protocol max)")]
     InvalidMaxLenders,
     #[msg("Invalid payment amount")]
     InvalidPaymentAmount,

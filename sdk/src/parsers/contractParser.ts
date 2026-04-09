@@ -26,8 +26,8 @@ import type {
   ParsedPrincipalPaymentType,
 } from './types';
 
-const CURRENT_LAYOUT_LEN = 957;
-const RESERVED_TAIL_BYTES = 38;
+const MIN_LAYOUT_LEN = 533;
+const RESERVED_TAIL_BYTES = 64;
 const MAX_REASONABLE_CONTRIBUTIONS = 128;
 
 function mapEnum<T extends string>(mapping: Record<number, string>, value: number): T | 'Unknown' {
@@ -83,8 +83,8 @@ function parseCurrentLayout(data: Buffer): ParsedContractAccount {
   const loanType = mapEnum<ParsedLoanType>(LOAN_TYPE_MAP, readU8(data, offset));
   offset += 1;
 
-  const ltvRatioBps = readU64(data, offset);
-  offset += 8;
+  const ltvRatioBps = readU32(data, offset);
+  offset += 4;
 
   const interestPaymentType = mapEnum<ParsedInterestPaymentType>(INTEREST_PAYMENT_TYPE_MAP, readU8(data, offset));
   offset += 1;
@@ -197,8 +197,8 @@ function parseCurrentLayout(data: Buffer): ParsedContractAccount {
   const collateralValueAtCreationRaw = readU64(data, offset);
   offset += 8;
 
-  const ltvFloorBps = readU16(data, offset);
-  offset += 2;
+  const ltvFloorBps = readU32(data, offset);
+  offset += 4;
 
   const loanMint = readPubkey(data, offset);
   offset += 32;
@@ -333,7 +333,7 @@ export function parseContractAccount(data: Buffer): ParsedContractAccount | null
     return null;
   }
 
-  if (data.length < CURRENT_LAYOUT_LEN) {
+  if (data.length < MIN_LAYOUT_LEN) {
     return null;
   }
 

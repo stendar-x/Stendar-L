@@ -439,6 +439,7 @@ describe("Pool lifecycle", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         toBn(targetAmount),
         toBn(900),
         30,
@@ -450,7 +451,6 @@ describe("Pool lifecycle", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,

@@ -101,7 +101,7 @@ function makePubkey(seed: number): string {
 
 function buildContractCurrentFullBuffer(): Buffer {
   const w = new BufferWriter();
-  const tailReserved = Buffer.alloc(38, 0xab);
+  const tailReserved = Buffer.alloc(64, 0xab);
 
   w.writeBytes(DISCRIMINATORS.DEBT_CONTRACT);
   w.writePubkey(makePubkey(11)); // borrower
@@ -112,7 +112,7 @@ function buildContractCurrentFullBuffer(): Buffer {
   w.writeU32(180); // term_days
   w.writeU64(5_000_000_000n); // collateral_amount
   w.writeU8(1); // loan_type: Committed
-  w.writeU64(12_000n); // ltv_ratio
+  w.writeU32(12_000); // ltv_ratio
   w.writeU8(0); // interest_payment_type: OutstandingBalance
   w.writeU8(1); // principal_payment_type: NoFixedPayment
   w.writeU8(3); // interest_frequency: Monthly
@@ -141,14 +141,14 @@ function buildContractCurrentFullBuffer(): Buffer {
   w.writeU64(7n); // proposal_count
   w.writeU64(321n); // uncollectable_balance
   w.writeU64(654n); // total_prepayment_fees
-  w.writeU16(1); // account_version
+  w.writeU16(2); // account_version
 
   // Appended fields
   w.writeU8(2); // contract_version
   w.writePubkey(makePubkey(41)); // collateral_mint
   w.writePubkey(makePubkey(42)); // collateral_token_account
   w.writeU64(2_100_000n); // collateral_value_at_creation
-  w.writeU16(11_000); // ltv_floor_bps
+  w.writeU32(11_000); // ltv_floor_bps
   w.writePubkey(makePubkey(43)); // loan_mint
   w.writePubkey(makePubkey(44)); // loan_token_account
   w.writeBool(true); // recall_requested
@@ -166,7 +166,7 @@ function buildContractCurrentFullBuffer(): Buffer {
   w.writeBool(false); // revolving_closed
   w.writeBytes(tailReserved);
 
-  return w.toBuffer(957);
+  return w.toBuffer(981);
 }
 
 function buildContributionCurrent147Buffer(): Buffer {
@@ -239,8 +239,8 @@ function buildProposalBuffer(): Buffer {
   w.writeOptionU8(1); // Weekly
   w.writeU8(0); // OutstandingBalance
   w.writeU8(1); // NoFixedPayment
-  w.writeU64(12_000n);
-  w.writeU16(10_800);
+  w.writeU32(12_000);
+  w.writeU32(10_800);
   w.writePubkeyVec([makePubkey(103), makePubkey(104)]);
   w.writeU8(2); // total participants
   w.writeU8(1); // approvals
@@ -364,7 +364,7 @@ test('parseContractAccount handles current layout', () => {
   assert.equal(contract?.uncollectableBalanceRaw, '321');
   assert.equal(contract?.totalPrepaymentFeesRaw, '654');
   assert.equal(contract?.contractVersion, 2);
-  assert.equal(contract?.accountVersion, 1);
+  assert.equal(contract?.accountVersion, 2);
   assert.equal(contract?.isRevolving, true);
   assert.equal(contract?.standbyFeeRate, 225);
   assert.equal(contract?.drawnAmountRaw, '350000');

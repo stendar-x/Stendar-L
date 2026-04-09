@@ -12,18 +12,18 @@ pub enum HealthStatus {
 /// Classify a contract's health using current LTV and configured thresholds.
 pub fn check_health(
     current_ltv_bps: u32,
-    ltv_floor_bps: u16,
+    ltv_floor_bps: u32,
     liquidation_buffer_bps: u16,
 ) -> HealthStatus {
     if ltv_floor_bps == 0 {
         return HealthStatus::Healthy;
     }
 
-    let partial_threshold = ltv_floor_bps.saturating_add(liquidation_buffer_bps);
+    let partial_threshold = ltv_floor_bps.saturating_add(liquidation_buffer_bps as u32);
 
-    if current_ltv_bps <= ltv_floor_bps as u32 {
+    if current_ltv_bps <= ltv_floor_bps {
         HealthStatus::FullLiquidation
-    } else if current_ltv_bps <= partial_threshold as u32 {
+    } else if current_ltv_bps <= partial_threshold {
         HealthStatus::PartialLiquidation
     } else {
         HealthStatus::Healthy

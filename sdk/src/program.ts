@@ -246,8 +246,26 @@ function toProposalIdBn(value: string | number | bigint): BN {
   return toValidatedU64Bn(value, 'proposalId', true);
 }
 
-function toLtvRatioBn(value: string | number | bigint): BN {
-  return toValidatedU64Bn(value, 'proposedLtvRatio');
+function toValidatedU32FromInput(
+  value: string | number | bigint,
+  fieldName: string,
+  allowZero = false
+): number {
+  const parsed = parseInputAsBigInt(value, fieldName);
+  if (parsed < 0n) {
+    throw new Error(`Invalid ${fieldName}: value must be non-negative.`);
+  }
+  if (!allowZero && parsed === 0n) {
+    throw new Error(`Invalid ${fieldName}: value must be greater than zero.`);
+  }
+  if (parsed > 0xFFFFFFFFn) {
+    throw new Error(`Invalid ${fieldName}: value exceeds u32 max (2^32 - 1).`);
+  }
+  return Number(parsed);
+}
+
+function toLtvRatioU32(value: string | number | bigint): number {
+  return toValidatedU32FromInput(value, 'proposedLtvRatio');
 }
 
 export function normalizePaymentFrequency(
@@ -713,8 +731,8 @@ export class StendarProgramClient {
           : null,
         normalizeInterestPaymentType(request.proposedInterestPaymentType),
         normalizePrincipalPaymentType(request.proposedPrincipalPaymentType),
-        toLtvRatioBn(request.proposedLtvRatio),
-        toValidatedU16(request.proposedLtvFloorBps, 'proposedLtvFloorBps'),
+        toLtvRatioU32(request.proposedLtvRatio),
+        toValidatedU32(request.proposedLtvFloorBps, 'proposedLtvFloorBps'),
         Boolean(request.recallOnRejection),
       ],
       {

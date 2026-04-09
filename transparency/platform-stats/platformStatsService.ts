@@ -474,7 +474,8 @@ class PlatformStatsService {
       const interestRatePercent = boundedBasisPointsToPercent(account?.interest_rate, 0, 100);
       const ltvPercentValue = boundedBasisPointsToPercent(account?.ltv_ratio, 10, 200);
       const termDays = safeBoundedNumber(account?.term_days, 0, 3650);
-      const numContributions = safeBoundedNumber(account?.num_contributions, 0, 1000);
+      // Protocol cap is currently 100 lenders per contract.
+      const numContributions = safeBoundedNumber(account?.num_contributions, 0, 100);
 
       if (numContributions !== null) {
         calculation.totalNumContributions += numContributions;

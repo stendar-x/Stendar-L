@@ -1143,7 +1143,7 @@ pub fn pool_deploy_to_contract(ctx: Context<PoolDeployToContract>, amount: u64) 
     }
     if pool.min_ltv_bps > 0 {
         require!(
-            contract.ltv_floor_bps >= pool.min_ltv_bps,
+            contract.ltv_floor_bps >= pool.min_ltv_bps as u32,
             StendarError::PoolDeploymentRuleViolation
         );
     }

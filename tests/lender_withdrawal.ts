@@ -348,6 +348,7 @@ describe("Lender withdrawal from open contracts", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        maxLenders,
         toBn(targetUsdc),
         new anchor.BN(500),
         30,
@@ -359,7 +360,6 @@ describe("Lender withdrawal from open contracts", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        maxLenders,
         true,
         false,
         0,

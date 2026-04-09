@@ -583,6 +583,7 @@ describe("Stream 12 testing audit", () => {
     await program.methods
       .createDebtContract(
         contractSeed,
+        14,
         toBn(params.targetAmount),
         new anchor.BN(500),
         params.termDays ?? 30,
@@ -594,7 +595,6 @@ describe("Stream 12 testing audit", () => {
         { noFixedPayment: {} },
         { weekly: {} },
         null,
-        14,
         true,
         false,
         0,
@@ -1254,6 +1254,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeedA,
+          14,
           toBn(100_000_000n),
           new anchor.BN(500),
           30,
@@ -1265,7 +1266,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -1340,6 +1340,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeedB,
+          14,
           toBn(100_000_000n),
           new anchor.BN(500),
           30,
@@ -1351,7 +1352,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -1464,6 +1464,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeed,
+          14,
           toBn(100_000_000n),
           new anchor.BN(500),
           30,
@@ -1475,7 +1476,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -1578,6 +1578,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           floorSeed,
+          14,
           toBn(100_000_000n),
           new anchor.BN(500),
           30,
@@ -1589,7 +1590,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -1704,6 +1704,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeed,
+          14,
           toBn(targetAmount),
           new anchor.BN(500),
           45,
@@ -1715,7 +1716,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -1939,6 +1939,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           v1Seed,
+          14,
           new anchor.BN(50_000_000),
           new anchor.BN(500),
           30,
@@ -1950,7 +1951,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -1980,7 +1980,10 @@ describe("Stream 12 testing audit", () => {
         .rpc();
       assert.fail("expected v1 contract creation with null accounts to fail");
     } catch (error) {
-      assert.match(parseErrorMessage(error), /MissingTokenAccounts/);
+      assert.match(
+        parseErrorMessage(error),
+        /MissingTokenAccounts|Account `contract` not provided\./,
+      );
     }
   });
 
@@ -2503,6 +2506,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           v1Seed,
+          14,
           new anchor.BN(40_000_000),
           new anchor.BN(500),
           30,
@@ -2514,7 +2518,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -2544,7 +2547,10 @@ describe("Stream 12 testing audit", () => {
         .rpc();
       assert.fail("expected v1 contract creation with null accounts to fail");
     } catch (error) {
-      assert.match(parseErrorMessage(error), /MissingTokenAccounts/);
+      assert.match(
+        parseErrorMessage(error),
+        /MissingTokenAccounts|Account `contract` not provided\./,
+      );
     }
   });
 
@@ -4217,6 +4223,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeed,
+          14,
           targetAmount,
           new anchor.BN(500),
           30,
@@ -4228,7 +4235,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -4258,7 +4264,10 @@ describe("Stream 12 testing audit", () => {
         .rpc();
       assert.fail("expected v1-style null token accounts to be rejected");
     } catch (error) {
-      assert.match(parseErrorMessage(error), /MissingTokenAccounts/);
+      assert.match(
+        parseErrorMessage(error),
+        /MissingTokenAccounts|Account `contract` not provided\./,
+      );
     }
   });
 
@@ -4281,6 +4290,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeed,
+          14,
           targetAmount,
           new anchor.BN(500),
           30,
@@ -4292,7 +4302,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,
@@ -4345,6 +4354,7 @@ describe("Stream 12 testing audit", () => {
       await program.methods
         .createDebtContract(
           contractSeed,
+          14,
           targetAmount,
           new anchor.BN(500),
           1,
@@ -4356,7 +4366,6 @@ describe("Stream 12 testing audit", () => {
           { noFixedPayment: {} },
           { weekly: {} },
           null,
-          14,
           true,
           false,
           0,

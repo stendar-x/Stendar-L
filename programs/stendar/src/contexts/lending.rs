@@ -32,12 +32,12 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(contract_seed: u64)]
+#[instruction(contract_seed: u64, max_lenders: u16)]
 pub struct CreateDebtContract<'info> {
     #[account(
         init,
         payer = borrower,
-        space = DebtContract::LEN,
+        space = DebtContract::space(max_lenders),
         seeds = [b"debt_contract", borrower.key().as_ref(), &contract_seed.to_le_bytes()],
         bump
     )]

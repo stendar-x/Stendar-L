@@ -4,6 +4,7 @@ use crate::state::{
     TermAmendmentProposal, TestClockOffset, Treasury, PROPOSAL_VOTE_SEED, PROPOSER_COOLDOWN_SEED,
     TERM_PROPOSAL_SEED, TREASURY_SEED,
 };
+use crate::utils::MAX_LENDERS_PER_TX;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
@@ -15,7 +16,13 @@ pub struct CreateTermProposal<'info> {
     #[account(
         init,
         payer = proposer,
-        space = TermAmendmentProposal::LEN,
+        space = TermAmendmentProposal::space(
+            (if contract.max_lenders == 0 {
+                MAX_LENDERS_PER_TX
+            } else {
+                contract.max_lenders
+            }) as usize + 1
+        ),
         seeds = [TERM_PROPOSAL_SEED, contract.key().as_ref(), &proposal_id.to_le_bytes()],
         bump
     )]
