@@ -44,7 +44,7 @@ If a PR changes the on-chain program and IDL, it must also update SDK types and 
 Never commit secrets, keys, or env files. Specifically disallowed:
 
 - `.env`, `.env.*`, `**/.env*`
-- `*wallet*.json`, `*authority*.json`, `scheduler-wallet.json`
+- `*wallet*.json`, `*authority*.json`, `*-keypair.json`
 - infra configs that include private service secrets
 
 Before committing:
@@ -56,6 +56,8 @@ Before committing:
 
 - `npm run test:regression`
 - `npm --prefix sdk test`
+- `cargo test --manifest-path programs/stendar/Cargo.toml`
+- `npm run audit:gate`
 - `npm run idl:check`
 
 ## Cursor Cloud specific instructions
@@ -79,8 +81,19 @@ All four CI-equivalent checks can be run without any external services, wallets,
 
 `ts-mocha` triggers a `[DEP0040] punycode` deprecation warning on Node 22+. This is harmless and can be ignored.
 
-- **Scoped npm SDK installs**: Immediately after publishing `@stendar-x/sdk`, `npm view @stendar-x/sdk` may return 404 while the tarball URL already resolves. If installs fail during this window, use `https://registry.npmjs.org/@stendar-x/sdk/-/sdk-0.1.0.tgz` as a temporary lockfile source and retry normal semver installs later.
+- **Scoped npm SDK installs**: Immediately after publishing `@stendar-x/sdk`, `npm view @stendar-x/sdk` may return 404 while the tarball URL already resolves. If installs fail during this window, use the direct tarball URL (`https://registry.npmjs.org/@stendar-x/sdk/-/sdk-<version>.tgz`) as a temporary lockfile source and retry normal semver installs later.
 
 ### Anchor / Solana CLI
 
-Anchor CLI and Solana CLI are **not** required for running tests or SDK development. They are only needed if you are building the on-chain program (`anchor build`) or running on-chain integration tests (`anchor test`). The IDL check (`npm run idl:check`) requires a prior `anchor build` output in `target/idl/`.
+Anchor CLI and Solana CLI are installed and available. They are not needed for running tests or SDK development, but are required for building (`anchor build`) and upgrading (`anchor upgrade`) the on-chain program, and for on-chain integration tests (`anchor test`).
+
+The IDL check (`npm run idl:check`) requires a prior `anchor build` output in `target/idl/`.
+
+### Program deployment
+
+The default Solana CLI wallet (`~/.config/solana/id.json`) is the program upgrade authority. To deploy program changes after merging to `main`:
+
+1. `anchor build`
+2. `anchor upgrade target/deploy/stendar.so --program-id 278CdXnmeUFSmNjwbmRQmHk87fP5XqGmtshk9Jwp8VdE`
+
+The `Anchor.toml` provider is configured for devnet. Verify the target cluster with `solana config get` before upgrading.
