@@ -182,6 +182,7 @@ export interface CloseRevolvingFacilityRequest {
   contractAddress: string;
   borrowerAddress: string;
   borrowerUsdcAccount: string;
+  contractUsdcAccount: string;
   treasuryUsdcAccount: string;
 }
 
@@ -559,6 +560,7 @@ export interface DirectCloseRevolvingFacilityInstructionRequest {
   contractAddress: string;
   borrowerAddress: string;
   borrowerUsdcAccount: string;
+  contractUsdcAccount: string;
   treasuryUsdcAccount: string;
   stateAddress?: string;
   treasuryAddress?: string;

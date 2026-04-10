@@ -573,6 +573,7 @@ describe("Revolving lifecycle", () => {
         treasury: treasuryPda,
         borrower: borrower.publicKey,
         borrowerUsdcAccount: accts.borrowerUsdcAta,
+        contractUsdcAccount: accts.contractUsdcAta,
         treasuryUsdcAccount: treasuryUsdcAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -633,6 +634,222 @@ describe("Revolving lifecycle", () => {
     );
     assert.equal(contractAfterFinalRepay.drawnAmount.toString(), "0");
     assert.equal(contractAfterFinalRepay.availableAmount.toString(), "0");
+  });
+
+  it("enforces reduced availability after standby fee distribution", async () => {
+    const borrower = anchor.web3.Keypair.generate();
+    const lender = anchor.web3.Keypair.generate();
+    await Promise.all([
+      airdropSol(connection, borrower, 0.2),
+      airdropSol(connection, lender, 0.05),
+    ]);
+
+    const contractSeed = new anchor.BN(91_003);
+    const [contractPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("debt_contract"),
+        borrower.publicKey.toBuffer(),
+        u64ToLeBytes(contractSeed),
+      ],
+      program.programId,
+    );
+    const [operationsFundPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("operations_fund"), contractPda.toBuffer()],
+      program.programId,
+    );
+    const [contributionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("contribution"), contractPda.toBuffer(), lender.publicKey.toBuffer()],
+      program.programId,
+    );
+    const [escrowPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow"), contractPda.toBuffer(), lender.publicKey.toBuffer()],
+      program.programId,
+    );
+
+    const targetRaw = 1_000_000_000_000n;
+    const firstDrawRaw = 300_000_000_000n;
+    const collateralRaw = 1_000_000n;
+    const targetAmount = toBn(targetRaw);
+    const accts = await createContractAccounts(
+      borrower,
+      contractPda,
+      targetRaw,
+      collateralRaw,
+    );
+
+    await program.methods
+      .createDebtContract(
+        contractSeed,
+        14,
+        targetAmount,
+        toBn(1_200),
+        30,
+        new anchor.BN(0),
+        { committed: {} },
+        new anchor.BN(0),
+        0,
+        { outstandingBalance: {} },
+        { noFixedPayment: {} },
+        { weekly: {} },
+        null,
+        true,
+        false,
+        0,
+        true,
+        300,
+        { manual: {} },
+        { public: {} },
+      )
+      .accountsPartial(
+        contractCreateAccounts(
+          contractPda,
+          operationsFundPda,
+          borrower.publicKey,
+          accts,
+        ),
+      )
+      .signers([borrower])
+      .rpc();
+
+    const lenderUsdcAta = await setupLender(lender, targetRaw);
+    await program.methods
+      .contributeToContract(targetAmount)
+      .accountsPartial(
+        contributeAccounts(
+          contractPda,
+          contributionPda,
+          escrowPda,
+          lender.publicKey,
+          borrower.publicKey,
+          lenderUsdcAta,
+          accts.contractUsdcAta,
+          accts.borrowerUsdcAta,
+        ),
+      )
+      .signers([lender])
+      .rpc();
+
+    await program.methods
+      .drawFromRevolving(toBn(firstDrawRaw))
+      .accountsPartial({
+        contract: contractPda,
+        state: statePda,
+        treasury: treasuryPda,
+        borrower: borrower.publicKey,
+        borrowerUsdcAccount: accts.borrowerUsdcAta,
+        contractUsdcAccount: accts.contractUsdcAta,
+        collateralRegistry: collateralRegistryPda,
+        priceFeedAccount: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .remainingAccounts([
+        { pubkey: contributionPda, isSigner: false, isWritable: false },
+        { pubkey: escrowPda, isSigner: false, isWritable: false },
+      ])
+      .signers([borrower])
+      .rpc();
+
+    const escrowUsdcAta = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer,
+      guardUsdcMint,
+      escrowPda,
+      true,
+    );
+    await advanceClockForFees();
+
+    await (program as any).methods
+      .distributeStandbyFees()
+      .accounts({
+        contract: contractPda,
+        state: statePda,
+        treasury: treasuryPda,
+        botAuthority: provider.wallet.publicKey,
+        contractUsdcAccount: accts.contractUsdcAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .remainingAccounts([
+        { pubkey: contributionPda, isSigner: false, isWritable: false },
+        { pubkey: escrowPda, isSigner: false, isWritable: true },
+        { pubkey: escrowUsdcAta.address, isSigner: false, isWritable: true },
+      ])
+      .rpc();
+
+    const contractAfterStandby = await program.account.debtContract.fetch(contractPda);
+    const availableAfterStandby = BigInt(
+      contractAfterStandby.availableAmount.toString(),
+    );
+    const availableByLimit = BigInt(contractAfterStandby.creditLimit.toString()) -
+      BigInt(contractAfterStandby.drawnAmount.toString());
+    assert.isTrue(
+      availableAfterStandby < availableByLimit,
+      "standby fee distribution should reduce drawable capacity",
+    );
+    assert.isTrue(availableAfterStandby > 1n, "reduced availability should stay positive");
+
+    const secondDrawRaw = availableAfterStandby / 2n;
+    await program.methods
+      .drawFromRevolving(toBn(secondDrawRaw))
+      .accountsPartial({
+        contract: contractPda,
+        state: statePda,
+        treasury: treasuryPda,
+        borrower: borrower.publicKey,
+        borrowerUsdcAccount: accts.borrowerUsdcAta,
+        contractUsdcAccount: accts.contractUsdcAta,
+        collateralRegistry: collateralRegistryPda,
+        priceFeedAccount: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .remainingAccounts([
+        { pubkey: contributionPda, isSigner: false, isWritable: false },
+        { pubkey: escrowPda, isSigner: false, isWritable: false },
+      ])
+      .signers([borrower])
+      .rpc();
+
+    const contractAfterSecondDraw = await program.account.debtContract.fetch(contractPda);
+    const availableAfterSecondDraw = BigInt(
+      contractAfterSecondDraw.availableAmount.toString(),
+    );
+    assert.equal(
+      contractAfterSecondDraw.drawnAmount.toString(),
+      (firstDrawRaw + secondDrawRaw).toString(),
+    );
+    assert.isTrue(
+      availableAfterSecondDraw <= availableAfterStandby - secondDrawRaw,
+      `post-draw availability should include the draw and any standby accrual (before=${availableAfterStandby.toString()}, draw=${secondDrawRaw.toString()}, after=${availableAfterSecondDraw.toString()})`,
+    );
+    assert.isTrue(
+      availableAfterSecondDraw < availableAfterStandby,
+      "availability should decrease after the second draw",
+    );
+
+    const overdrawAmount = availableAfterSecondDraw + 1n;
+    try {
+      await program.methods
+        .drawFromRevolving(toBn(overdrawAmount))
+        .accountsPartial({
+          contract: contractPda,
+          state: statePda,
+          treasury: treasuryPda,
+          borrower: borrower.publicKey,
+          borrowerUsdcAccount: accts.borrowerUsdcAta,
+          contractUsdcAccount: accts.contractUsdcAta,
+          collateralRegistry: collateralRegistryPda,
+          priceFeedAccount: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .remainingAccounts([
+          { pubkey: contributionPda, isSigner: false, isWritable: false },
+          { pubkey: escrowPda, isSigner: false, isWritable: false },
+        ])
+        .signers([borrower])
+        .rpc();
+      assert.fail("expected overdraw to fail with DrawExceedsAvailable");
+    } catch (error) {
+      assert.match(extractAnchorErrorMessage(error), /DrawExceedsAvailable/);
+    }
   });
 
   it("keeps standard disbursement behavior for non-revolving contracts", async () => {

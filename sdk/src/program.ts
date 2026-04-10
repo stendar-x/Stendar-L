@@ -560,6 +560,7 @@ export class StendarProgramClient {
         treasury,
         borrower: new PublicKey(request.borrowerAddress),
         borrowerUsdcAccount: new PublicKey(request.borrowerUsdcAccount),
+        contractUsdcAccount: new PublicKey(request.contractUsdcAccount),
         treasuryUsdcAccount: new PublicKey(request.treasuryUsdcAccount),
         tokenProgram: TOKEN_PROGRAM_ID,
       }
