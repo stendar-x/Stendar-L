@@ -351,9 +351,9 @@ pub fn close_revolving_facility(ctx: Context<CloseRevolvingFacility>) -> Result<
     );
 
     let current_time = Clock::get()?.unix_timestamp;
-    let available_before_close = ctx.accounts.contract.available_amount;
-
     let contract = &mut ctx.accounts.contract;
+    checkpoint_standby_fees(contract, current_time)?;
+    let available_before_close = contract.available_amount;
     contract.revolving_closed = true;
     contract.available_amount = 0;
 
@@ -591,6 +591,9 @@ pub fn distribute_standby_fees<'info>(
         .checked_add(distributed_standby)
         .ok_or(StendarError::ArithmeticOverflow)?;
     contract.accrued_standby_fees = 0;
+    if !contract.revolving_closed {
+        contract.available_amount = contract.available_amount.saturating_sub(distributed_standby);
+    }
     if check_revolving_completion(contract) {
         contract.status = ContractStatus::Completed;
     }

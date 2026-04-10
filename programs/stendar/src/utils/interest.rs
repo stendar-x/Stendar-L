@@ -108,6 +108,9 @@ pub fn checkpoint_standby_fees(contract: &mut DebtContract, current_time: i64) -
     if !contract.is_revolving {
         return Ok(());
     }
+    if contract.revolving_closed {
+        return Ok(());
+    }
     if contract.last_standby_fee_update == 0 {
         contract.last_standby_fee_update = current_time;
         return Ok(());
@@ -336,6 +339,22 @@ mod tests {
     }
 
     #[test]
+    fn revolving_interest_still_accrues_after_close() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.revolving_closed = true;
+        contract.drawn_amount = 500_000;
+        contract.accrued_interest = 0;
+        contract.last_interest_update = 1;
+        contract.interest_rate = 1_000; // 10% APR
+
+        let one_year_later = 365 * 24 * 60 * 60 + 1;
+        process_automatic_interest(&mut contract, one_year_later).expect("accrual should succeed");
+
+        assert!(contract.accrued_interest > 0);
+    }
+
+    #[test]
     fn scheduled_principal_handles_negative_elapsed_time() {
         let mut contract = sample_contract();
         let original_outstanding = contract.outstanding_balance;
@@ -395,6 +414,45 @@ mod tests {
         // 750_000 * 2% = 15_000
         assert_eq!(contract.accrued_standby_fees, 15_000);
         assert_eq!(contract.last_standby_fee_update, one_year_later);
+    }
+
+    #[test]
+    fn checkpoint_standby_fees_skips_closed_facility() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.revolving_closed = true;
+        contract.credit_limit = 1_000_000;
+        contract.drawn_amount = 250_000;
+        contract.standby_fee_rate = 200; // 2% APR
+        contract.last_standby_fee_update = 1;
+
+        let one_year_later = 365 * 24 * 60 * 60 + 1;
+        checkpoint_standby_fees(&mut contract, one_year_later).expect("checkpoint succeeds");
+
+        assert_eq!(contract.accrued_standby_fees, 0);
+    }
+
+    #[test]
+    fn checkpoint_standby_fees_accrues_only_before_close() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.credit_limit = 1_000_000;
+        contract.drawn_amount = 250_000;
+        contract.standby_fee_rate = 200; // 2% APR
+        contract.last_standby_fee_update = 1;
+
+        let first_checkpoint_time = 180 * 24 * 60 * 60 + 1;
+        checkpoint_standby_fees(&mut contract, first_checkpoint_time).expect("first checkpoint succeeds");
+        let accrued_before_close = contract.accrued_standby_fees;
+        assert!(accrued_before_close > 0);
+
+        contract.revolving_closed = true;
+
+        let second_checkpoint_time = first_checkpoint_time + (180 * 24 * 60 * 60);
+        checkpoint_standby_fees(&mut contract, second_checkpoint_time)
+            .expect("second checkpoint succeeds");
+
+        assert_eq!(contract.accrued_standby_fees, accrued_before_close);
     }
 
     #[test]
