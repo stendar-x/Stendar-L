@@ -90,6 +90,11 @@ pub struct CloseRevolvingFacility<'info> {
     pub borrower: Signer<'info>,
     #[account(mut)]
     pub borrower_usdc_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = contract_usdc_account.key() == contract.loan_token_account @ StendarError::TokenAccountMismatch
+    )]
+    pub contract_usdc_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub treasury_usdc_account: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,

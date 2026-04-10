@@ -2057,6 +2057,10 @@
           "writable": true
         },
         {
+          "name": "contract_usdc_account",
+          "writable": true
+        },
+        {
           "name": "treasury_usdc_account",
           "writable": true
         },

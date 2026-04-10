@@ -230,9 +230,9 @@ pub fn draw_from_revolving<'info>(
         .checked_add(amount)
         .ok_or(StendarError::ArithmeticOverflow)?;
     contract.available_amount = contract
-        .credit_limit
-        .checked_sub(contract.drawn_amount)
-        .ok_or(StendarError::ArithmeticOverflow)?;
+        .available_amount
+        .checked_sub(amount)
+        .ok_or(StendarError::DrawExceedsAvailable)?;
     contract.total_draws = contract
         .total_draws
         .checked_add(1)
@@ -312,8 +312,7 @@ pub fn repay_revolving<'info>(
         contract.available_amount = contract
             .available_amount
             .checked_add(amount)
-            .ok_or(StendarError::ArithmeticOverflow)?
-            .min(contract.credit_limit.saturating_sub(contract.drawn_amount));
+            .ok_or(StendarError::ArithmeticOverflow)?;
     }
     if check_revolving_completion(contract) {
         contract.status = ContractStatus::Completed;
@@ -353,6 +352,7 @@ pub fn close_revolving_facility(ctx: Context<CloseRevolvingFacility>) -> Result<
     let current_time = Clock::get()?.unix_timestamp;
     let contract = &mut ctx.accounts.contract;
     checkpoint_standby_fees(contract, current_time)?;
+    process_automatic_interest(contract, current_time)?;
     let available_before_close = contract.available_amount;
     contract.revolving_closed = true;
     contract.available_amount = 0;
@@ -378,16 +378,14 @@ pub fn close_revolving_facility(ctx: Context<CloseRevolvingFacility>) -> Result<
                         ctx.accounts.token_program.to_account_info(),
                         Transfer {
                             from: ctx.accounts.borrower_usdc_account.to_account_info(),
-                            to: ctx.accounts.treasury_usdc_account.to_account_info(),
+                            to: ctx.accounts.contract_usdc_account.to_account_info(),
                             authority: ctx.accounts.borrower.to_account_info(),
                         },
                     ),
                     early_termination_fee,
                 )?;
-                ctx.accounts.treasury.fees_collected = ctx
-                    .accounts
-                    .treasury
-                    .fees_collected
+                contract.accrued_standby_fees = contract
+                    .accrued_standby_fees
                     .checked_add(early_termination_fee)
                     .ok_or(StendarError::ArithmeticOverflow)?;
             }
@@ -592,7 +590,10 @@ pub fn distribute_standby_fees<'info>(
         .ok_or(StendarError::ArithmeticOverflow)?;
     contract.accrued_standby_fees = 0;
     if !contract.revolving_closed {
-        contract.available_amount = contract.available_amount.saturating_sub(distributed_standby);
+        contract.available_amount = contract
+            .available_amount
+            .checked_sub(distributed_standby)
+            .ok_or(StendarError::ArithmeticOverflow)?;
     }
     if check_revolving_completion(contract) {
         contract.status = ContractStatus::Completed;
