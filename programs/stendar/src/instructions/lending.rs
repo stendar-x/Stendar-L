@@ -436,7 +436,7 @@ pub fn create_debt_contract(
     require!(!ctx.accounts.state.is_paused, StendarError::PlatformPaused);
     require!(target_amount > 0, StendarError::InvalidContributionAmount);
     require!(
-        target_amount <= 1_000_000 * 1_000_000,
+        target_amount <= 10_000_000 * 1_000_000,
         StendarError::ExceedsTargetAmount
     );
     require!(interest_rate > 0, StendarError::InvalidInterestRate);

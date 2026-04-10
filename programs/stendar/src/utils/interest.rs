@@ -3,7 +3,7 @@ use crate::errors::StendarError;
 use crate::state::{ContractStatus, DebtContract, InterestPaymentType, PrincipalPaymentType};
 use anchor_lang::prelude::*;
 
-const MAX_OUTSTANDING_BALANCE_MULTIPLIER: u64 = 3;
+const MAX_OUTSTANDING_BALANCE_MULTIPLIER: u64 = 10;
 
 pub fn process_automatic_interest(contract: &mut DebtContract, current_time: i64) -> Result<()> {
     if contract.is_revolving {
@@ -307,15 +307,15 @@ mod tests {
     fn outstanding_balance_interest_is_capped() {
         let mut contract = sample_contract();
         contract.interest_rate = 10_000; // 100% APR
-        let four_years = 4 * 365 * 24 * 60 * 60;
+        let ten_years = 10 * 365 * 24 * 60 * 60;
         let current_time = contract
             .last_interest_update
-            .checked_add(four_years)
+            .checked_add(ten_years)
             .expect("time math should not overflow");
 
         process_automatic_interest(&mut contract, current_time).expect("accrual should succeed");
 
-        assert_eq!(contract.outstanding_balance, 3_000_000);
+        assert_eq!(contract.outstanding_balance, 10_000_000);
     }
 
     #[test]
