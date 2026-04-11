@@ -433,6 +433,29 @@ mod tests {
     }
 
     #[test]
+    fn standby_distribution_saturates_available_amount_at_zero() {
+        let mut contract = sample_contract();
+        contract.is_revolving = true;
+        contract.revolving_closed = false;
+        contract.credit_limit = 1_000_000;
+        contract.drawn_amount = 0;
+        contract.available_amount = 1_000;
+        contract.standby_fee_rate = 10_000; // 100% APR
+        contract.last_standby_fee_update = 1;
+
+        let one_year_later = 365 * 24 * 60 * 60 + 1;
+        checkpoint_standby_fees(&mut contract, one_year_later).expect("checkpoint succeeds");
+
+        let distributed_standby = contract.accrued_standby_fees;
+        assert!(distributed_standby > contract.available_amount);
+        assert!(contract.available_amount.checked_sub(distributed_standby).is_none());
+
+        contract.available_amount = contract.available_amount.saturating_sub(distributed_standby);
+
+        assert_eq!(contract.available_amount, 0);
+    }
+
+    #[test]
     fn checkpoint_standby_fees_accrues_only_before_close() {
         let mut contract = sample_contract();
         contract.is_revolving = true;

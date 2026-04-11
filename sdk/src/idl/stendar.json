@@ -2024,6 +2024,10 @@
           }
         },
         {
+          "name": "test_clock_offset",
+          "optional": true
+        },
+        {
           "name": "treasury",
           "writable": true,
           "pda": {
@@ -3518,6 +3522,10 @@
           }
         },
         {
+          "name": "test_clock_offset",
+          "optional": true
+        },
+        {
           "name": "treasury",
           "writable": true,
           "pda": {
@@ -3661,6 +3669,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "test_clock_offset",
+          "optional": true
         },
         {
           "name": "treasury",
@@ -6107,6 +6119,10 @@
               }
             ]
           }
+        },
+        {
+          "name": "test_clock_offset",
+          "optional": true
         },
         {
           "name": "treasury",

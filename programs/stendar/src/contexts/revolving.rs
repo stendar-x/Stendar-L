@@ -1,5 +1,5 @@
 use crate::errors::StendarError;
-use crate::state::{CollateralRegistry, DebtContract, State, Treasury, TREASURY_SEED};
+use crate::state::{CollateralRegistry, DebtContract, State, TestClockOffset, Treasury, TREASURY_SEED};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
@@ -15,6 +15,7 @@ pub struct DrawFromRevolving<'info> {
         bump
     )]
     pub state: Account<'info, State>,
+    pub test_clock_offset: Option<Box<Account<'info, TestClockOffset>>>,
     #[account(
         seeds = [TREASURY_SEED],
         bump
@@ -51,6 +52,7 @@ pub struct RepayRevolving<'info> {
         bump
     )]
     pub state: Account<'info, State>,
+    pub test_clock_offset: Option<Box<Account<'info, TestClockOffset>>>,
     #[account(
         seeds = [TREASURY_SEED],
         bump
@@ -80,6 +82,7 @@ pub struct CloseRevolvingFacility<'info> {
         bump
     )]
     pub state: Account<'info, State>,
+    pub test_clock_offset: Option<Box<Account<'info, TestClockOffset>>>,
     #[account(
         mut,
         seeds = [TREASURY_SEED],
@@ -109,6 +112,7 @@ pub struct DistributeStandbyFees<'info> {
         bump
     )]
     pub state: Account<'info, State>,
+    pub test_clock_offset: Option<Box<Account<'info, TestClockOffset>>>,
     #[account(
         mut,
         seeds = [TREASURY_SEED],
