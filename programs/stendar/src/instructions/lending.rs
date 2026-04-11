@@ -61,6 +61,56 @@ pub(crate) fn calculate_recall_fee(recall_amount: u64) -> Result<u64> {
     u64::try_from(fee).map_err(|_| error!(StendarError::ArithmeticOverflow))
 }
 
+fn calculate_liquidation_debt(contract: &DebtContract) -> Result<u64> {
+    if contract.is_revolving {
+        contract
+            .drawn_amount
+            .checked_add(contract.accrued_interest)
+            .and_then(|value| value.checked_add(contract.accrued_standby_fees))
+            .ok_or_else(|| error!(StendarError::ArithmeticOverflow))
+    } else {
+        Ok(contract.outstanding_balance)
+    }
+}
+
+fn is_price_liquidation_triggered(
+    collateral_value_usdc: u64,
+    debt_for_health_check: u64,
+    ltv_floor_bps: u32,
+) -> Result<bool> {
+    if debt_for_health_check == 0 || ltv_floor_bps == 0 {
+        return Ok(false);
+    }
+
+    let collateral_side = (collateral_value_usdc as u128)
+        .checked_mul(10_000u128)
+        .ok_or(StendarError::ArithmeticOverflow)?;
+    let floor_side = (debt_for_health_check as u128)
+        .checked_mul(ltv_floor_bps as u128)
+        .ok_or(StendarError::ArithmeticOverflow)?;
+    Ok(collateral_side <= floor_side)
+}
+
+fn validate_collateral_floor_bps(
+    ltv_floor_bps: u32,
+    loan_type: LoanType,
+    min_committed_floor_bps: u16,
+) -> Result<()> {
+    require!(ltv_floor_bps > 0, StendarError::LtvFloorBelowMinimum);
+    if loan_type == LoanType::Demand {
+        require!(
+            ltv_floor_bps >= DEMAND_LOAN_MIN_FLOOR_BPS as u32,
+            StendarError::DemandLoanFloorTooLow
+        );
+    } else {
+        require!(
+            ltv_floor_bps >= min_committed_floor_bps as u32,
+            StendarError::LtvFloorBelowMinimum
+        );
+    }
+    Ok(())
+}
+
 fn is_partial_funding_enabled(contract: &DebtContract) -> bool {
     match contract.partial_funding_flag {
         PARTIAL_FUNDING_DISABLED_FLAG => false,
@@ -760,19 +810,11 @@ pub fn create_debt_contract(
             StendarError::OraclePriceFeedMismatch
         );
 
-        if ltv_floor_bps > 0 {
-            if loan_type == LoanType::Demand {
-                require!(
-                    ltv_floor_bps >= DEMAND_LOAN_MIN_FLOOR_BPS as u32,
-                    StendarError::DemandLoanFloorTooLow
-                );
-            } else {
-                require!(
-                    ltv_floor_bps >= collateral_type.min_committed_floor_bps as u32,
-                    StendarError::LtvFloorBelowMinimum
-                );
-            }
-        }
+        validate_collateral_floor_bps(
+            ltv_floor_bps,
+            loan_type,
+            collateral_type.min_committed_floor_bps,
+        )?;
 
         require!(
             borrower_collateral_ata.owner == ctx.accounts.borrower.key()
@@ -1500,7 +1542,6 @@ fn liquidate_contract_standard<'info>(
         loan_type,
         term_days,
         created_at,
-        outstanding_balance,
         funded_amount,
         loan_mint,
         collateral_mint,
@@ -1521,7 +1562,6 @@ fn liquidate_contract_standard<'info>(
             contract.loan_type,
             contract.term_days,
             contract.created_at,
-            contract.outstanding_balance,
             contract.funded_amount,
             contract.loan_mint,
             contract.collateral_mint,
@@ -1624,17 +1664,9 @@ fn liquidate_contract_standard<'info>(
         price,
         exponent,
     )?;
-    let is_price_triggered = if outstanding_balance == 0 || ltv_floor_bps == 0 {
-        false
-    } else {
-        let collateral_side = (collateral_value_usdc as u128)
-            .checked_mul(10_000u128)
-            .ok_or(StendarError::ArithmeticOverflow)?;
-        let floor_side = (outstanding_balance as u128)
-            .checked_mul(ltv_floor_bps as u128)
-            .ok_or(StendarError::ArithmeticOverflow)?;
-        collateral_side <= floor_side
-    };
+    let health_check_debt = calculate_liquidation_debt(&ctx.accounts.contract)?;
+    let is_price_triggered =
+        is_price_liquidation_triggered(collateral_value_usdc, health_check_debt, ltv_floor_bps)?;
 
     require!(
         is_price_triggered || is_time_triggered,
@@ -1647,31 +1679,14 @@ fn liquidate_contract_standard<'info>(
             checkpoint_standby_fees(contract, current_time)?;
         }
         process_automatic_interest(contract, current_time)?;
-        let total_owed = if contract.is_revolving {
-            contract
-                .drawn_amount
-                .checked_add(contract.accrued_interest)
-                .and_then(|value| value.checked_add(contract.accrued_standby_fees))
-                .ok_or(StendarError::ArithmeticOverflow)?
-        } else {
-            contract.outstanding_balance
-        };
+        let total_owed = calculate_liquidation_debt(contract)?;
         require!(
             total_owed > 0,
             StendarError::ContractNotInDefault
         );
     }
 
-    let total_owed_for_liquidation = if ctx.accounts.contract.is_revolving {
-        ctx.accounts
-            .contract
-            .drawn_amount
-            .checked_add(ctx.accounts.contract.accrued_interest)
-            .and_then(|value| value.checked_add(ctx.accounts.contract.accrued_standby_fees))
-            .ok_or(StendarError::ArithmeticOverflow)?
-    } else {
-        ctx.accounts.contract.outstanding_balance
-    };
+    let total_owed_for_liquidation = calculate_liquidation_debt(&ctx.accounts.contract)?;
     let bot_pays_usdc = calculate_bot_payment(total_owed_for_liquidation, collateral_value_usdc);
     let distribute_usdc_total = if ctx.accounts.contract.is_revolving {
         bot_pays_usdc
@@ -1929,7 +1944,13 @@ fn liquidate_contract_standard<'info>(
     {
         let contract = &mut ctx.accounts.contract;
         let state = &mut ctx.accounts.state;
-        finalize_full_liquidation(contract, state, bot_pays_usdc, current_time)?;
+        finalize_full_liquidation(
+            contract,
+            state,
+            bot_pays_usdc,
+            total_owed_for_liquidation,
+            current_time,
+        )?;
         if contract.is_revolving {
             contract.revolving_closed = true;
             contract.credit_limit = 0;
@@ -2008,8 +2029,8 @@ fn is_time_liquidation_triggered(
     }
 }
 
-fn calculate_bot_payment(outstanding_balance: u64, collateral_value_usdc: u64) -> u64 {
-    std::cmp::min(outstanding_balance, collateral_value_usdc)
+fn calculate_bot_payment(total_owed: u64, collateral_value_usdc: u64) -> u64 {
+    std::cmp::min(total_owed, collateral_value_usdc)
 }
 
 fn compute_full_liquidation_collateral_split(
@@ -2042,11 +2063,12 @@ fn finalize_full_liquidation(
     contract: &mut DebtContract,
     state: &mut State,
     bot_pays_usdc: u64,
+    total_owed: u64,
     current_time: i64,
 ) -> Result<()> {
-    let pre_liquidation_debt = contract.outstanding_balance;
+    let pre_liquidation_principal_debt = contract.outstanding_balance;
     let pre_liquidation_collateral = contract.collateral_amount;
-    let shortfall = pre_liquidation_debt.saturating_sub(bot_pays_usdc);
+    let shortfall = total_owed.saturating_sub(bot_pays_usdc);
 
     contract.status = ContractStatus::Liquidated;
     contract.uncollectable_balance = shortfall;
@@ -2058,9 +2080,10 @@ fn finalize_full_liquidation(
         .total_liquidations
         .checked_add(1)
         .ok_or(StendarError::ArithmeticOverflow)?;
+    // `total_debt` tracks principal obligations, so we retire only the principal bucket here.
     state.total_debt = state
         .total_debt
-        .checked_sub(pre_liquidation_debt)
+        .checked_sub(pre_liquidation_principal_debt)
         .ok_or(StendarError::ArithmeticOverflow)?;
     state.total_collateral = state
         .total_collateral
@@ -3724,6 +3747,35 @@ mod tests {
     }
 
     #[test]
+    fn collateral_floor_validation_rejects_zero_floor() {
+        let err = validate_collateral_floor_bps(0, LoanType::Committed, 9_000)
+            .expect_err("zero floor must be rejected");
+        assert_stendar_error(err, StendarError::LtvFloorBelowMinimum);
+    }
+
+    #[test]
+    fn collateral_floor_validation_rejects_demand_floor_below_protocol_minimum() {
+        let err = validate_collateral_floor_bps(DEMAND_LOAN_MIN_FLOOR_BPS as u32 - 1, LoanType::Demand, 0)
+            .expect_err("demand floor below minimum must fail");
+        assert_stendar_error(err, StendarError::DemandLoanFloorTooLow);
+    }
+
+    #[test]
+    fn collateral_floor_validation_rejects_committed_floor_below_collateral_minimum() {
+        let err = validate_collateral_floor_bps(8_999, LoanType::Committed, 9_000)
+            .expect_err("committed floor below collateral minimum must fail");
+        assert_stendar_error(err, StendarError::LtvFloorBelowMinimum);
+    }
+
+    #[test]
+    fn collateral_floor_validation_accepts_valid_floor() {
+        validate_collateral_floor_bps(DEMAND_LOAN_MIN_FLOOR_BPS as u32, LoanType::Demand, 0)
+            .expect("demand floor at minimum should pass");
+        validate_collateral_floor_bps(9_000, LoanType::Committed, 9_000)
+            .expect("committed floor at minimum should pass");
+    }
+
+    #[test]
     fn validate_funder_authorization_skips_checks_for_public_mode() {
         let contract = sample_contract(100);
         let contract_key = Pubkey::new_unique();
@@ -3882,8 +3934,32 @@ mod tests {
     }
 
     #[test]
+    fn price_liquidation_trigger_uses_total_revolving_debt() {
+        let mut revolving_contract = sample_contract(104);
+        revolving_contract.is_revolving = true;
+        revolving_contract.drawn_amount = 1_000_000;
+        revolving_contract.outstanding_balance = revolving_contract.drawn_amount;
+        revolving_contract.accrued_interest = 150_000;
+        revolving_contract.accrued_standby_fees = 100_000;
+
+        let total_owed =
+            calculate_liquidation_debt(&revolving_contract).expect("total owed should calculate");
+        assert_eq!(total_owed, 1_250_000);
+
+        let price_triggered_with_drawn_only =
+            is_price_liquidation_triggered(1_200_000, revolving_contract.outstanding_balance, 10_000)
+                .expect("drawn-only trigger check should succeed");
+        let price_triggered_with_total_owed =
+            is_price_liquidation_triggered(1_200_000, total_owed, 10_000)
+                .expect("total-owed trigger check should succeed");
+
+        assert!(!price_triggered_with_drawn_only);
+        assert!(price_triggered_with_total_owed);
+    }
+
+    #[test]
     fn finalize_full_liquidation_reconciles_totals_and_tracks_shortfall() {
-        let mut contract = sample_contract(104);
+        let mut contract = sample_contract(105);
         contract.status = ContractStatus::Active;
         contract.outstanding_balance = 1_000_000;
         contract.collateral_amount = 650_000;
@@ -3891,7 +3967,7 @@ mod tests {
         let mut state = sample_state();
         let liquidated_at = 1_700_999_999;
 
-        finalize_full_liquidation(&mut contract, &mut state, 650_000, liquidated_at)
+        finalize_full_liquidation(&mut contract, &mut state, 650_000, 1_000_000, liquidated_at)
             .expect("liquidation finalization should succeed");
 
         assert_eq!(contract.status, ContractStatus::Liquidated);
@@ -3906,20 +3982,45 @@ mod tests {
 
     #[test]
     fn finalize_full_liquidation_zeroes_shortfall_when_fully_repaid() {
-        let mut contract = sample_contract(105);
+        let mut contract = sample_contract(106);
         contract.status = ContractStatus::Active;
         contract.outstanding_balance = 800_000;
         contract.collateral_amount = 900_000;
 
         let mut state = sample_state();
 
-        finalize_full_liquidation(&mut contract, &mut state, 800_000, 1_701_000_000)
+        finalize_full_liquidation(&mut contract, &mut state, 800_000, 800_000, 1_701_000_000)
             .expect("liquidation finalization should succeed");
 
         assert_eq!(contract.outstanding_balance, 0);
         assert_eq!(contract.uncollectable_balance, 0);
         assert_eq!(state.total_debt, 1_700_000);
         assert_eq!(state.total_collateral, 2_100_000);
+    }
+
+    #[test]
+    fn finalize_full_liquidation_uses_total_owed_for_revolving_shortfall() {
+        let mut contract = sample_contract(107);
+        contract.status = ContractStatus::Active;
+        contract.is_revolving = true;
+        contract.drawn_amount = 1_000_000;
+        contract.outstanding_balance = contract.drawn_amount;
+        contract.accrued_interest = 200_000;
+        contract.accrued_standby_fees = 50_000;
+        contract.collateral_amount = 500_000;
+
+        let mut state = sample_state();
+        let total_owed =
+            calculate_liquidation_debt(&contract).expect("total owed should calculate");
+        assert_eq!(total_owed, 1_250_000);
+
+        finalize_full_liquidation(&mut contract, &mut state, 900_000, total_owed, 1_701_111_111)
+            .expect("liquidation finalization should succeed");
+
+        assert_eq!(contract.outstanding_balance, 0);
+        assert_eq!(contract.uncollectable_balance, 350_000);
+        assert_eq!(state.total_debt, 1_500_000);
+        assert_eq!(state.total_collateral, 2_500_000);
     }
 
     #[test]
@@ -3958,7 +4059,7 @@ mod tests {
 
     #[test]
     fn interest_accrual_before_health_check_can_flip_position_to_unhealthy() {
-        let mut contract = sample_contract(106);
+        let mut contract = sample_contract(108);
         contract.status = ContractStatus::Active;
         contract.outstanding_balance = 1_000_000;
         contract.interest_payment_type = InterestPaymentType::OutstandingBalance;

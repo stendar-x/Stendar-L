@@ -121,3 +121,38 @@ jobs:
           )
           print("OK: testing feature excluded from defaults and IDL has no testing-only instructions")
           PY
+
+      - name: Ensure testing feature is compile-blocked for on-chain builds
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          env = dict(os.environ)
+          env["RUSTFLAGS"] = '--cfg target_os="solana"'
+
+          cmd = [
+              "cargo",
+              "check",
+              "--manifest-path",
+              "programs/stendar/Cargo.toml",
+              "--features",
+              "testing",
+          ]
+          result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+          output = f"{result.stdout}\n{result.stderr}"
+
+          if result.returncode == 0:
+              print("Expected testing feature check to fail for on-chain builds")
+              print(output)
+              sys.exit(1)
+
+          expected = "must not be enabled for on-chain builds"
+          if expected not in output:
+              print("testing feature compile guard did not produce the expected error message")
+              print(output)
+              sys.exit(1)
+
+          print("OK: on-chain compile guard blocks the testing feature")
+          PY

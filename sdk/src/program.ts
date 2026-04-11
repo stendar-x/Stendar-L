@@ -68,6 +68,11 @@ function parseInputAsBigInt(value: string | number | bigint, fieldName: string):
     if (!Number.isFinite(value) || !Number.isInteger(value)) {
       throw new Error(`Invalid ${fieldName}: expected an integer.`);
     }
+    if (!Number.isSafeInteger(value)) {
+      throw new Error(
+        `Invalid ${fieldName}: value exceeds Number.MAX_SAFE_INTEGER. Use BigInt or string instead.`
+      );
+    }
     return BigInt(value);
   }
   if (typeof value === 'string') {

@@ -133,6 +133,12 @@ fn calculate_accrued_yield(
     u64::try_from(yield_amount).map_err(|_| error!(StendarError::ArithmeticOverflow))
 }
 
+/// Accrues depositor yield using at most one historical rate boundary.
+///
+/// The pool account stores only `prev_rate_bps` and `rate_updated_at`, so if multiple
+/// rate changes occur between two claims, accrual is approximated by splitting at the
+/// latest tracked boundary only. This is acceptable because pool rate updates are
+/// time-locked by `MIN_POOL_RATE_CHANGE_INTERVAL_SECONDS`.
 fn accrue_deposit_yield(
     pool: &mut PoolState,
     pool_deposit: &mut PoolDeposit,
@@ -1463,6 +1469,30 @@ mod tests {
 
         assert_eq!(pool.total_pending_yield(), first + second);
         assert_eq!(deposit.accrued_yield, first + second);
+    }
+
+    #[test]
+    fn accrue_deposit_yield_uses_last_rate_boundary_when_multiple_changes_are_possible() {
+        let mut pool = sample_pool();
+        pool.prev_rate_bps = 1_500;
+        pool.rate_bps = 500;
+        pool.rate_updated_at = 200;
+        let mut deposit = sample_deposit(0);
+        pool.current_total_deposits = deposit.deposit_amount;
+
+        let approximated =
+            accrue_deposit_yield(&mut pool, &mut deposit, 300).expect("accrual must succeed");
+        let tracked_before_change =
+            calculate_accrued_yield(deposit.deposit_amount, pool.prev_rate_bps, 200).unwrap();
+        let tracked_after_change =
+            calculate_accrued_yield(deposit.deposit_amount, pool.rate_bps, 100).unwrap();
+        let hypothetical_two_change_exact = calculate_accrued_yield(deposit.deposit_amount, 1_000, 100)
+            .unwrap()
+            + calculate_accrued_yield(deposit.deposit_amount, 1_500, 100).unwrap()
+            + tracked_after_change;
+
+        assert_eq!(approximated, tracked_before_change + tracked_after_change);
+        assert_ne!(approximated, hypothetical_two_change_exact);
     }
 
     #[test]

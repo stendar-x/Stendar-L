@@ -5,7 +5,7 @@ use crate::state::{ContractStatus, LenderContribution, LenderEscrow, LoanType};
 use crate::utils::{
     calculate_collateral_value_in_usdc, calculate_ltv_bps, calculate_standby_fee,
     check_revolving_completion, checkpoint_standby_fees, get_price_in_usdc, process_automatic_interest,
-    require_current_version, safe_u128_to_u64, MAX_CONFIDENCE_BPS_STANDARD, MAX_PRICE_AGE_LIQUIDATION,
+    require_current_version, safe_u128_to_u64, MAX_CONFIDENCE_BPS_STANDARD, MAX_PRICE_AGE_DRAW,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Transfer};
@@ -161,7 +161,7 @@ pub fn draw_from_revolving<'info>(
         );
         let (price, exponent) = get_price_in_usdc(
             price_feed,
-            MAX_PRICE_AGE_LIQUIDATION,
+            MAX_PRICE_AGE_DRAW,
             MAX_CONFIDENCE_BPS_STANDARD,
         )?;
         let collateral_value = calculate_collateral_value_in_usdc(
