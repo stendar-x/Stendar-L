@@ -1,5 +1,6 @@
 use crate::contexts::*;
 use crate::errors::StendarError;
+use crate::instructions::lending::with_test_clock_offset;
 use crate::state::{ContractStatus, LenderContribution, LenderEscrow, LoanType};
 use crate::utils::{
     calculate_collateral_value_in_usdc, calculate_ltv_bps, calculate_standby_fee,
@@ -124,7 +125,11 @@ pub fn draw_from_revolving<'info>(
         StendarError::TokenAccountMismatch
     );
 
-    let current_time = Clock::get()?.unix_timestamp;
+    let current_time = with_test_clock_offset(
+        Clock::get()?.unix_timestamp,
+        ctx.accounts.state.authority,
+        ctx.accounts.test_clock_offset.as_deref(),
+    )?;
     if ctx.accounts.contract.term_days > 0 {
         let maturity = ctx
             .accounts
@@ -281,7 +286,11 @@ pub fn repay_revolving<'info>(
         ctx.remaining_accounts,
     )?;
 
-    let current_time = Clock::get()?.unix_timestamp;
+    let current_time = with_test_clock_offset(
+        Clock::get()?.unix_timestamp,
+        ctx.accounts.state.authority,
+        ctx.accounts.test_clock_offset.as_deref(),
+    )?;
     {
         let contract = &mut ctx.accounts.contract;
         checkpoint_standby_fees(contract, current_time)?;
@@ -349,7 +358,11 @@ pub fn close_revolving_facility(ctx: Context<CloseRevolvingFacility>) -> Result<
         StendarError::TokenAccountMismatch
     );
 
-    let current_time = Clock::get()?.unix_timestamp;
+    let current_time = with_test_clock_offset(
+        Clock::get()?.unix_timestamp,
+        ctx.accounts.state.authority,
+        ctx.accounts.test_clock_offset.as_deref(),
+    )?;
     let contract = &mut ctx.accounts.contract;
     checkpoint_standby_fees(contract, current_time)?;
     process_automatic_interest(contract, current_time)?;
@@ -417,7 +430,11 @@ pub fn distribute_standby_fees<'info>(
         StendarError::TokenAccountMismatch
     );
 
-    let current_time = Clock::get()?.unix_timestamp;
+    let current_time = with_test_clock_offset(
+        Clock::get()?.unix_timestamp,
+        ctx.accounts.state.authority,
+        ctx.accounts.test_clock_offset.as_deref(),
+    )?;
     {
         let contract = &mut ctx.accounts.contract;
         checkpoint_standby_fees(contract, current_time)?;
@@ -592,8 +609,7 @@ pub fn distribute_standby_fees<'info>(
     if !contract.revolving_closed {
         contract.available_amount = contract
             .available_amount
-            .checked_sub(distributed_standby)
-            .ok_or(StendarError::ArithmeticOverflow)?;
+            .saturating_sub(distributed_standby);
     }
     if check_revolving_completion(contract) {
         contract.status = ContractStatus::Completed;
