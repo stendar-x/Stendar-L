@@ -16,3 +16,6 @@ coverage
 **/*wallet*.json
 **/*authority*.json
 **/*-keypair.json
+
+# Cursor workspace state
+.cursor/
