@@ -945,3 +945,28 @@ pub struct PoolExpired {
 pub struct PlatformPauseToggled {
     pub is_paused: bool,
 }
+
+#[event]
+pub struct FeeRatesUpdated {
+    pub authority: Pubkey,
+    pub old_pool_deposit_fee_bps: u16,
+    pub new_pool_deposit_fee_bps: u16,
+    pub old_pool_yield_fee_bps: u16,
+    pub new_pool_yield_fee_bps: u16,
+    pub old_primary_listing_fee_bps: u16,
+    pub new_primary_listing_fee_bps: u16,
+    pub old_secondary_listing_fee_bps: u16,
+    pub new_secondary_listing_fee_bps: u16,
+    pub old_secondary_buyer_fee_bps: u16,
+    pub new_secondary_buyer_fee_bps: u16,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct TreasuryWithdrawal {
+    pub authority: Pubkey,
+    pub recipient: Pubkey,
+    pub amount: u64,
+    pub is_token_withdrawal: bool,
+    pub timestamp: i64,
+}

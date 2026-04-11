@@ -4,6 +4,7 @@ import { PublicKey } from '@solana/web3.js';
 import type { StendarApiClient } from '../client';
 import { LendingActions } from '../actions/lending';
 import { TradingActions } from '../actions/trading';
+import { CollateralQueries } from '../queries/collateral';
 import { ContractsQueries } from '../queries/contracts';
 import { validatePathSegment, validateSolanaAddress } from '../utils/validation';
 
@@ -43,11 +44,16 @@ test('query classes reject malicious path inputs before issuing requests', () =>
   } as unknown as StendarApiClient;
 
   const queries = new ContractsQueries(api);
+  const collateralQueries = new CollateralQueries(api);
   assert.throws(
     () => queries.get('https://attacker.com/steal'),
     /absolute URLs are not allowed/i
   );
   assert.throws(() => queries.get('../traversal'), /path delimiter characters are not allowed|base58/i);
+  assert.throws(
+    () => collateralQueries.getPrice('../treasury'),
+    /path delimiter characters are not allowed|base58/i
+  );
   assert.equal(calls.length, 0);
 });
 

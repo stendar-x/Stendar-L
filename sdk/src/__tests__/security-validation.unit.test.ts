@@ -50,6 +50,39 @@ test('validateIdlIntegrity rejects mismatched account discriminators', () => {
   );
 });
 
+test('validateIdlIntegrity rejects mismatched instruction layouts', () => {
+  const supplied = cloneIdl() as any;
+  const instructionWithArgs = supplied.instructions.find(
+    (instruction: any) => Array.isArray(instruction.args) && instruction.args.length > 0
+  );
+  assert.ok(instructionWithArgs, 'expected at least one instruction with args in IDL');
+
+  instructionWithArgs.args[0].name = `${instructionWithArgs.args[0].name}_tampered`;
+
+  assert.throws(
+    () => validateIdlIntegrity(supplied, stendarIdl),
+    /layout mismatch/i
+  );
+});
+
+test('validateIdlIntegrity rejects mismatched account type layouts', () => {
+  const supplied = cloneIdl() as any;
+  const typeWithFields = supplied.types.find(
+    (typeEntry: any) =>
+      typeEntry?.type?.kind === 'struct'
+      && Array.isArray(typeEntry.type.fields)
+      && typeEntry.type.fields.length > 0
+  );
+  assert.ok(typeWithFields, 'expected at least one struct type layout in IDL');
+
+  typeWithFields.type.fields[0].name = `${typeWithFields.type.fields[0].name}_tampered`;
+
+  assert.throws(
+    () => validateIdlIntegrity(supplied, stendarIdl),
+    /layout mismatch/i
+  );
+});
+
 test('validateTransactionBuildResponse validates and decodes unsignedTransaction', () => {
   const response = validateTransactionBuildResponse({
     unsignedTransaction: buildUnsignedTransactionBase64(),

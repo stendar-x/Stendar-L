@@ -30,6 +30,14 @@ test('toValidatedU64Bn rejects overflow and invalid integer formats', () => {
   assert.throws(() => toValidatedU64Bn('abc' as any, 'amount'), /not a valid integer/i);
 });
 
+test('toValidatedU64Bn rejects unsafe JavaScript integers', () => {
+  const unsafeInteger = Number.MAX_SAFE_INTEGER + 1;
+  assert.throws(
+    () => toValidatedU64Bn(unsafeInteger, 'amount'),
+    /Number\.MAX_SAFE_INTEGER/i
+  );
+});
+
 test('toValidatedU64Bn supports allowZero for non-amount fields', () => {
   assert.equal(toValidatedU64Bn(0, 'proposalId', true).toString(), '0');
 });

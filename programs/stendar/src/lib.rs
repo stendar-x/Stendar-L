@@ -17,6 +17,11 @@ pub use state::*;
 
 declare_id!("278CdXnmeUFSmNjwbmRQmHk87fP5XqGmtshk9Jwp8VdE");
 
+#[cfg(all(feature = "testing", target_os = "solana"))]
+compile_error!(
+    "The `testing` feature must not be enabled for on-chain builds. Use `anchor build` without `--features testing`."
+);
+
 #[program]
 pub mod stendar {
     use super::*;

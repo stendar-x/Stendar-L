@@ -200,10 +200,11 @@ test('collateral, wallet, and community queries map endpoints', async () => {
   const collateral = new CollateralQueries(api);
   const wallet = new WalletQueries(api);
   const community = new CommunityQueries(api);
+  const collateralMint = makeAddress(41);
   const walletAddress = makeAddress(40);
 
   await collateral.getRegistry();
-  await collateral.getPrice('mint-1');
+  await collateral.getPrice(collateralMint);
   await wallet.getBalance(walletAddress);
   await community.getFeatureLeaderboard(25);
 
@@ -211,7 +212,7 @@ test('collateral, wallet, and community queries map endpoints', async () => {
     calls.map((call) => call.path),
     [
       '/api/collateral/registry',
-      '/api/collateral/price/mint-1',
+      `/api/collateral/price/${collateralMint}`,
       `/api/wallet/${walletAddress}/balance`,
       '/api/community/feature-requests/leaderboard?limit=25',
     ]

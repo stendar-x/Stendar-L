@@ -1,8 +1,9 @@
 use crate::contexts::*;
 use crate::errors::StendarError;
 use crate::state::{
-    AuthorityUpdated, ContractStatus, InterestPaymentType, LenderContribution, LenderEscrow,
-    PlatformPauseToggled, PlatformStats, CURRENT_ACCOUNT_VERSION, TREASURY_SEED,
+    AuthorityUpdated, ContractStatus, FeeRatesUpdated, InterestPaymentType, LenderContribution,
+    LenderEscrow, PlatformPauseToggled, PlatformStats, TreasuryWithdrawal, CURRENT_ACCOUNT_VERSION,
+    TREASURY_SEED,
 };
 use crate::utils::{
     calculate_reimbursement, check_revolving_completion, checkpoint_standby_fees,
@@ -36,6 +37,28 @@ fn calculate_collateral_withdraw(
         .and_then(|value| value.checked_div(outstanding_balance_before as u128))
         .ok_or(StendarError::ArithmeticOverflow)?;
     u64::try_from(collateral_withdraw).map_err(|_| error!(StendarError::ArithmeticOverflow))
+}
+
+fn build_fee_rates_updated_event(
+    authority: Pubkey,
+    old_rates: [u16; 5],
+    new_rates: [u16; 5],
+    timestamp: i64,
+) -> FeeRatesUpdated {
+    FeeRatesUpdated {
+        authority,
+        old_pool_deposit_fee_bps: old_rates[0],
+        new_pool_deposit_fee_bps: new_rates[0],
+        old_pool_yield_fee_bps: old_rates[1],
+        new_pool_yield_fee_bps: new_rates[1],
+        old_primary_listing_fee_bps: old_rates[2],
+        new_primary_listing_fee_bps: new_rates[2],
+        old_secondary_listing_fee_bps: old_rates[3],
+        new_secondary_listing_fee_bps: new_rates[3],
+        old_secondary_buyer_fee_bps: old_rates[4],
+        new_secondary_buyer_fee_bps: new_rates[4],
+        timestamp,
+    }
 }
 
 pub fn get_platform_stats(ctx: Context<GetPlatformStats>) -> Result<PlatformStats> {
@@ -192,6 +215,7 @@ pub fn automated_interest_transfer<'info>(
     let bot_processor_info = ctx.accounts.bot_processor.to_account_info();
     let contract_funded_amount = ctx.accounts.contract.funded_amount;
     let accrued_interest = ctx.accounts.contract.accrued_interest;
+    let outstanding_balance_snapshot = ctx.accounts.contract.outstanding_balance;
     let contract_borrower = ctx.accounts.contract.borrower;
     let contract_loan_mint = ctx.accounts.contract.loan_mint;
     let contract_collateral_mint = ctx.accounts.contract.collateral_mint;
@@ -436,7 +460,7 @@ pub fn automated_interest_transfer<'info>(
         collateral_withdraw = calculate_collateral_withdraw(
             ctx.accounts.contract.collateral_amount,
             accrued_interest,
-            ctx.accounts.contract.outstanding_balance,
+            outstanding_balance_snapshot,
         )?;
 
         if collateral_withdraw > 0 {
@@ -948,6 +972,7 @@ pub fn automated_principal_transfer<'info>(
 pub fn withdraw_from_treasury(ctx: Context<WithdrawFromTreasury>, amount: u64) -> Result<()> {
     let treasury = &mut ctx.accounts.treasury;
     require_current_version(treasury.account_version)?;
+    let withdrawal_timestamp = Clock::get()?.unix_timestamp;
 
     // Only program authority can withdraw
     require!(
@@ -1057,6 +1082,14 @@ pub fn withdraw_from_treasury(ctx: Context<WithdrawFromTreasury>, amount: u64) -
         msg!("Treasury withdrawal completed: {} lamports", amount);
     }
 
+    emit!(TreasuryWithdrawal {
+        authority: ctx.accounts.authority.key(),
+        recipient: ctx.accounts.recipient.key(),
+        amount,
+        is_token_withdrawal: wants_token_withdrawal,
+        timestamp: withdrawal_timestamp,
+    });
+
     Ok(())
 }
 
@@ -1082,6 +1115,13 @@ pub fn update_fee_rates(
 
     let state = &mut ctx.accounts.state;
     require_current_version(state.account_version)?;
+    let old_rates = [
+        state.pool_deposit_fee_bps,
+        state.pool_yield_fee_bps,
+        state.primary_listing_fee_bps,
+        state.secondary_listing_fee_bps,
+        state.secondary_buyer_fee_bps,
+    ];
 
     let validate_fee = |fee: u16| -> Result<()> {
         require!(fee <= MAX_FEE_TENTHS_BPS, StendarError::FeeTooHigh);
@@ -1108,6 +1148,20 @@ pub fn update_fee_rates(
         validate_fee(fee)?;
         state.secondary_buyer_fee_bps = fee;
     }
+
+    let new_rates = [
+        state.pool_deposit_fee_bps,
+        state.pool_yield_fee_bps,
+        state.primary_listing_fee_bps,
+        state.secondary_listing_fee_bps,
+        state.secondary_buyer_fee_bps,
+    ];
+    emit!(build_fee_rates_updated_event(
+        ctx.accounts.authority.key(),
+        old_rates,
+        new_rates,
+        Clock::get()?.unix_timestamp,
+    ));
 
     Ok(())
 }
@@ -1144,6 +1198,30 @@ mod tests {
         let err = require_automated_principal_versions(CURRENT_ACCOUNT_VERSION, 0)
             .expect_err("stale treasury version must fail");
         assert_stendar_error(err, StendarError::AccountNeedsMigration);
+    }
+
+    #[test]
+    fn fee_rates_updated_event_builder_tracks_old_and_new_values() {
+        let authority = Pubkey::new_unique();
+        let event = build_fee_rates_updated_event(
+            authority,
+            [1, 2, 3, 4, 5],
+            [6, 7, 8, 9, 10],
+            1_701_234_567,
+        );
+
+        assert_eq!(event.authority, authority);
+        assert_eq!(event.old_pool_deposit_fee_bps, 1);
+        assert_eq!(event.new_pool_deposit_fee_bps, 6);
+        assert_eq!(event.old_pool_yield_fee_bps, 2);
+        assert_eq!(event.new_pool_yield_fee_bps, 7);
+        assert_eq!(event.old_primary_listing_fee_bps, 3);
+        assert_eq!(event.new_primary_listing_fee_bps, 8);
+        assert_eq!(event.old_secondary_listing_fee_bps, 4);
+        assert_eq!(event.new_secondary_listing_fee_bps, 9);
+        assert_eq!(event.old_secondary_buyer_fee_bps, 5);
+        assert_eq!(event.new_secondary_buyer_fee_bps, 10);
+        assert_eq!(event.timestamp, 1_701_234_567);
     }
 
     #[test]

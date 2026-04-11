@@ -7,6 +7,7 @@ use crate::state::MockOraclePriceFeed;
 
 pub const MAX_PRICE_AGE_CREATION: u64 = 120;
 pub const MAX_PRICE_AGE_LIQUIDATION: u64 = 60;
+pub const MAX_PRICE_AGE_DRAW: u64 = MAX_PRICE_AGE_CREATION;
 pub const USDC_DECIMALS: u8 = 6;
 pub const MAX_CONFIDENCE_BPS_STANDARD: u64 = 200;
 pub const MAX_CONFIDENCE_BPS_LIQUIDATION: u64 = 100;
