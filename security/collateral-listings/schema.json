@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stendar.com/schemas/collateral-listing.schema.json",
+  "title": "Stendar Collateral Listing Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "environment",
+    "assets"
+  ],
+  "properties": {
+    "manifestVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "devnet",
+        "mainnet"
+      ]
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "symbol",
+        "mint",
+        "oraclePriceFeed",
+        "decimals",
+        "liquidationBufferBps",
+        "minCommittedFloorBps",
+        "isActive"
+      ],
+      "properties": {
+        "symbol": {
+          "type": "string",
+          "pattern": "^[A-Z0-9._-]{2,12}$"
+        },
+        "mint": {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+        },
+        "oraclePriceFeed": {
+          "type": "string",
+          "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12
+        },
+        "liquidationBufferBps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "minCommittedFloorBps": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 20000
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
