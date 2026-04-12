@@ -1,0 +1,36 @@
+{
+  "$schema": "./schema.json",
+  "manifestVersion": 1,
+  "environment": "devnet",
+  "updatedAt": "2026-04-06T16:29:42.000Z",
+  "notes": "Collateral registry expanded with WSOL, test BTC, and test ETH using live devnet Pyth receiver feeds.",
+  "assets": [
+    {
+      "symbol": "WSOL",
+      "mint": "So11111111111111111111111111111111111111112",
+      "oraclePriceFeed": "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE",
+      "decimals": 9,
+      "liquidationBufferBps": 500,
+      "minCommittedFloorBps": 11000,
+      "isActive": true
+    },
+    {
+      "symbol": "TBTC",
+      "mint": "BzgnjvvSvm7WJjUVeG741ab7Br4sXQDg9cyAcTkX47d7",
+      "oraclePriceFeed": "4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo",
+      "decimals": 8,
+      "liquidationBufferBps": 300,
+      "minCommittedFloorBps": 12000,
+      "isActive": true
+    },
+    {
+      "symbol": "TETH",
+      "mint": "BNtyGrKKFZbPDr3kJpvKvdrrwAQTWoVJTePcymorCHbF",
+      "oraclePriceFeed": "42amVS4KgzR9rA28tkVYqVXjq9Qa8dcZQMbH5EYFX6XC",
+      "decimals": 8,
+      "liquidationBufferBps": 400,
+      "minCommittedFloorBps": 11500,
+      "isActive": true
+    }
+  ]
+}
