@@ -1,0 +1,8 @@
+{
+  "$schema": "./schema.json",
+  "manifestVersion": 1,
+  "environment": "mainnet",
+  "updatedAt": "2026-02-28T00:00:00.000Z",
+  "notes": "Populate only after explicit canary approval for each mainnet collateral listing.",
+  "assets": []
+}
