@@ -16,3 +16,6 @@ coverage
 **/*wallet*.json
 **/*authority*.json
 **/scheduler-wallet.json
+
+# Cursor workspace state (local skills, machine-specific)
+.cursor/
