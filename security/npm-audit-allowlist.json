@@ -1,0 +1,15 @@
+{
+  "updatedAt": "2026-04-23",
+  "rationale": "All sdk entries trace to uuid <14.0.0 (GHSA-w5hq-g745-h8pq: missing bounds check in v3/v5/v6 when buf is provided). Not exploitable here: jayson only calls v4(), rpc-websockets only calls v1(). No fix path exists — uuid 14 is ESM-only but jayson requires CJS, and @solana/web3.js 2.x is canary-only. Re-evaluate when @solana/web3.js ships a stable release that drops uuid <14.",
+  "projects": {
+    "root": [],
+    "sdk": [
+      "@coral-xyz/anchor",
+      "@coral-xyz/borsh",
+      "@solana/web3.js",
+      "jayson",
+      "rpc-websockets",
+      "uuid"
+    ]
+  }
+}
