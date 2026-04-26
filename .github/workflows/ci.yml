@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  audit-gate:
+    name: Audit Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install SDK dependencies
+        run: npm ci --prefix sdk
+
+      - name: Enforce audit allowlist
+        run: npm run audit:gate
+
+  sdk-tests:
+    name: SDK Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Install SDK dependencies
+        run: npm ci --prefix sdk
+
+      - name: Build and test SDK
+        run: npm --prefix sdk test
+
+  protocol-regressions:
+    name: Protocol Regressions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run protocol PDA regression tests
+        run: npx ts-mocha -p ./tsconfig.json -t 120000 tests/trading.ts tests/integration_trading.ts tests/security_regression_static.ts
+
+  rust-tests:
+    name: Rust Program Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Run cargo tests
+        run: cargo test --manifest-path programs/stendar/Cargo.toml
+
+  verify-no-testing-feature:
+    name: Verify No Testing Feature in Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Ensure testing feature is excluded from defaults
+        run: |
+          cargo metadata --format-version 1 --no-deps --manifest-path programs/stendar/Cargo.toml > /tmp/stendar-meta.json
+          python3 - <<'PY'
+          import json
+
+          with open("/tmp/stendar-meta.json", "r", encoding="utf-8") as f:
+              meta = json.load(f)
+          stendar = next(pkg for pkg in meta["packages"] if pkg["name"] == "stendar")
+          default_features = stendar["features"].get("default", [])
+          assert "testing" not in default_features, "testing feature must not be in default features"
+
+          with open("sdk/src/idl/stendar.json", "r", encoding="utf-8") as f:
+              idl = json.load(f)
+          instruction_names = {ix.get("name") for ix in idl.get("instructions", [])}
+          testing_only_instructions = {
+              "reset_collateral_registry",
+              "reset_treasury_usdc_mint",
+              "initialize_mock_oracle_price_feed",
+              "set_mock_oracle_price_feed",
+              "initialize_test_clock_offset",
+              "set_test_clock_offset",
+          }
+          leaked_instructions = sorted(testing_only_instructions & instruction_names)
+          assert not leaked_instructions, (
+              "testing-only instructions leaked into deployable IDL: "
+              + ", ".join(leaked_instructions)
+          )
+          print("OK: testing feature excluded from defaults and IDL has no testing-only instructions")
+          PY
+
+      - name: Ensure testing feature is compile-blocked for on-chain builds
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          env = dict(os.environ)
+          env["RUSTFLAGS"] = '--cfg target_os="solana"'
+
+          cmd = [
+              "cargo",
+              "check",
+              "--manifest-path",
+              "programs/stendar/Cargo.toml",
+              "--features",
+              "testing",
+          ]
+          result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+          output = f"{result.stdout}\n{result.stderr}"
+
+          if result.returncode == 0:
+              print("Expected testing feature check to fail for on-chain builds")
+              print(output)
+              sys.exit(1)
+
+          expected = "must not be enabled for on-chain builds"
+          if expected not in output:
+              print("testing feature compile guard did not produce the expected error message")
+              print(output)
+              sys.exit(1)
+
+          print("OK: on-chain compile guard blocks the testing feature")
+          PY
