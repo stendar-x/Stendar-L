@@ -1,0 +1,45 @@
+{
+  "$schema": "./schema.json",
+  "manifestVersion": 1,
+  "environment": "mainnet",
+  "updatedAt": "2026-04-26T18:54:24.000Z",
+  "notes": "Initial mainnet collateral set: WSOL, cbBTC, wETH (Portal), USDC. Oracle feeds use Pyth Solana Receiver shard 0 (Pyth-sponsored updates). Risk parameters set at minimum floors; operators may configure higher values.",
+  "assets": [
+    {
+      "symbol": "WSOL",
+      "mint": "So11111111111111111111111111111111111111112",
+      "oraclePriceFeed": "7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE",
+      "decimals": 9,
+      "liquidationBufferBps": 500,
+      "minCommittedFloorBps": 11000,
+      "isActive": true
+    },
+    {
+      "symbol": "CBBTC",
+      "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+      "oraclePriceFeed": "4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo",
+      "decimals": 8,
+      "liquidationBufferBps": 500,
+      "minCommittedFloorBps": 11000,
+      "isActive": true
+    },
+    {
+      "symbol": "WETH",
+      "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "oraclePriceFeed": "42amVS4KgzR9rA28tkVYqVXjq9Qa8dcZQMbH5EYFX6XC",
+      "decimals": 8,
+      "liquidationBufferBps": 500,
+      "minCommittedFloorBps": 11000,
+      "isActive": true
+    },
+    {
+      "symbol": "USDC",
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "oraclePriceFeed": "Dpw1EAVrSB1ibxiDQyTAW6Zip3J4Btk2x4SgApQCeFbX",
+      "decimals": 6,
+      "liquidationBufferBps": 200,
+      "minCommittedFloorBps": 10200,
+      "isActive": true
+    }
+  ]
+}
