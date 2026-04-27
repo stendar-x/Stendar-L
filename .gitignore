@@ -1,0 +1,22 @@
+.anchor
+target
+test-ledger
+node_modules
+dist
+dist-tests
+coverage
+*.log
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Local keys
+**/*wallet*.json
+**/*authority*.json
+**/*-keypair.json
+
+# Cursor workspace state
+.cursor/

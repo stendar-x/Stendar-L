@@ -1,0 +1,12 @@
+{
+  "$schema": "./mainnet-build-verification.schema.json",
+  "programId": "278CdXnmeUFSmNjwbmRQmHk87fP5XqGmtshk9Jwp8VdE",
+  "binaryHash": "456f777a6fed08c927952535b3a8c182a34db23946ef1fea7409fd08f6f056a0",
+  "hashAlgorithm": "SHA-256",
+  "buildCommand": "anchor build -- --features mainnet",
+  "anchorVersion": "anchor-cli 0.31.1",
+  "rustVersion": "rustc 1.89.0-nightly (3e674b06b 2025-05-23)",
+  "solanaCliVersion": "solana-cli 2.1.22 (src:26944979; feat:1416569292, client:Agave)",
+  "builtAt": "2026-04-27T06:53:23Z",
+  "notes": "Mainnet release binary. Compare against deployed program binary using solana program dump."
+}

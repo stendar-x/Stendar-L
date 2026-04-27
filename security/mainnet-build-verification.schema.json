@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stendar.com/schemas/mainnet-build-verification.schema.json",
+  "title": "Stendar Mainnet Build Verification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "programId",
+    "binaryHash",
+    "hashAlgorithm",
+    "buildCommand",
+    "builtAt"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "programId": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+    },
+    "binaryHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "hashAlgorithm": {
+      "type": "string",
+      "enum": ["SHA-256"]
+    },
+    "buildCommand": {
+      "type": "string",
+      "minLength": 1
+    },
+    "anchorVersion": {
+      "type": "string"
+    },
+    "rustVersion": {
+      "type": "string"
+    },
+    "solanaCliVersion": {
+      "type": "string"
+    },
+    "builtAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000
+    }
+  }
+}
