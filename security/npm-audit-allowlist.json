@@ -1,0 +1,70 @@
+{
+  "$schema": "./npm-audit-allowlist.schema.json",
+  "updatedAt": "2026-05-10",
+  "rationale": "All sdk entries trace to uuid <14.0.0 (GHSA-w5hq-g745-h8pq: missing bounds check in v3/v5/v6 when buf is provided). Not exploitable here: jayson only calls v4(), rpc-websockets only calls v1(). No fix path exists — uuid 14 is ESM-only but jayson requires CJS, and @solana/web3.js 2.x is canary-only. Re-evaluate when @solana/web3.js ships a stable release that drops uuid <14.",
+  "projects": {
+    "root": [],
+    "sdk": [
+      {
+        "package": "@coral-xyz/anchor",
+        "advisory": "GHSA-w5hq-g745-h8pq",
+        "severity": "moderate",
+        "reason": "Transitively includes uuid <14.0.0 via @solana/web3.js dependency chain; no non-breaking remediation path yet.",
+        "owner": "Stendar",
+        "introducedAt": "2026-04-26",
+        "updatedAt": "2026-05-10",
+        "expiresAt": "2026-08-10"
+      },
+      {
+        "package": "@coral-xyz/borsh",
+        "advisory": "GHSA-w5hq-g745-h8pq",
+        "severity": "moderate",
+        "reason": "Transitively includes uuid <14.0.0 via @solana/web3.js dependency chain; no non-breaking remediation path yet.",
+        "owner": "Stendar",
+        "introducedAt": "2026-04-26",
+        "updatedAt": "2026-05-10",
+        "expiresAt": "2026-08-10"
+      },
+      {
+        "package": "@solana/web3.js",
+        "advisory": "GHSA-w5hq-g745-h8pq",
+        "severity": "moderate",
+        "reason": "uuid 14 migration is tied to @solana/web3.js 2.x canary; stable CJS-compatible upgrade path is not yet available.",
+        "owner": "Stendar",
+        "introducedAt": "2026-04-26",
+        "updatedAt": "2026-05-10",
+        "expiresAt": "2026-08-10"
+      },
+      {
+        "package": "jayson",
+        "advisory": "GHSA-w5hq-g745-h8pq",
+        "severity": "moderate",
+        "reason": "jayson remains on uuid <14 and CJS import path; upstream dependency movement is pending stable ecosystem support.",
+        "owner": "Stendar",
+        "introducedAt": "2026-04-26",
+        "updatedAt": "2026-05-10",
+        "expiresAt": "2026-08-10"
+      },
+      {
+        "package": "rpc-websockets",
+        "advisory": "GHSA-w5hq-g745-h8pq",
+        "severity": "moderate",
+        "reason": "rpc-websockets currently depends on uuid <14 and only uses non-affected UUID path in this repo's dependency graph.",
+        "owner": "Stendar",
+        "introducedAt": "2026-04-26",
+        "updatedAt": "2026-05-10",
+        "expiresAt": "2026-08-10"
+      },
+      {
+        "package": "uuid",
+        "advisory": "GHSA-w5hq-g745-h8pq",
+        "severity": "moderate",
+        "reason": "Known uuid <14 advisory tracked with bounded expiry while waiting for stable dependency upgrades.",
+        "owner": "Stendar",
+        "introducedAt": "2026-04-26",
+        "updatedAt": "2026-05-10",
+        "expiresAt": "2026-08-10"
+      }
+    ]
+  }
+}

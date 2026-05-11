@@ -1,0 +1,307 @@
+import {
+  AddressLookupTableAccount,
+  Commitment,
+  Connection,
+  Keypair,
+  PublicKey,
+  SendOptions,
+  SystemProgram,
+  Transaction,
+  TransactionSignature,
+  VersionedTransaction,
+} from '@solana/web3.js';
+import { stendarIdl } from '../idl';
+import type { AnchorWalletLike } from '../types';
+import { resolveProgramId } from './pda';
+
+export type DecodedTransaction = Transaction | VersionedTransaction;
+
+interface ResolvedAccountKeys {
+  get(index: number): PublicKey | undefined;
+}
+
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA').toBase58();
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
+).toBase58();
+const COMPUTE_BUDGET_PROGRAM_ID = new PublicKey(
+  'ComputeBudget111111111111111111111111111111'
+).toBase58();
+
+function toProgramIdString(programId: string | PublicKey): string {
+  if (typeof programId === 'string') {
+    return new PublicKey(programId).toBase58();
+  }
+  return programId.toBase58();
+}
+
+function resolveStendarProgramIdForValidation(): string {
+  try {
+    return resolveProgramId().toBase58();
+  } catch (error) {
+    if (!(error instanceof Error) || !/programId is required/i.test(error.message)) {
+      throw error;
+    }
+
+    const idlAddress = (stendarIdl as unknown as { address?: unknown }).address;
+    if (typeof idlAddress !== 'string' || idlAddress.trim().length === 0) {
+      throw error;
+    }
+
+    return new PublicKey(idlAddress).toBase58();
+  }
+}
+
+function defaultAllowedProgramIds(): Set<string> {
+  const stendarProgramId = resolveStendarProgramIdForValidation();
+
+  return new Set([
+    stendarProgramId,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    COMPUTE_BUDGET_PROGRAM_ID,
+    SystemProgram.programId.toBase58(),
+  ]);
+}
+
+function resolveAccountKeys(
+  transaction: DecodedTransaction,
+  options?: DecodeSerializedTransactionOptions
+): ResolvedAccountKeys {
+  if (transaction instanceof VersionedTransaction) {
+    if (
+      transaction.message.addressTableLookups.length > 0 &&
+      (!options?.addressLookupTableAccounts || options.addressLookupTableAccounts.length === 0)
+    ) {
+      throw new Error('Address lookup table accounts are required to validate versioned transaction program IDs');
+    }
+    if (options?.addressLookupTableAccounts?.length) {
+      return transaction.message.getAccountKeys({
+        addressLookupTableAccounts: [...options.addressLookupTableAccounts],
+      });
+    }
+    const accountKeys = transaction.message.staticAccountKeys;
+    return {
+      get(index: number): PublicKey | undefined {
+        return accountKeys[index];
+      },
+    };
+  }
+
+  // Legacy transactions expose program IDs directly on each instruction, so callers below
+  // continue to read `transaction.instructions`; this stub keeps the helper total.
+  return {
+    get(index: number): PublicKey | undefined {
+      return transaction.instructions[index]?.programId;
+    },
+  };
+}
+
+function extractProgramIds(transaction: DecodedTransaction, accountKeys: ResolvedAccountKeys): string[] {
+  if (transaction instanceof VersionedTransaction) {
+    return transaction.message.compiledInstructions.map((instruction) => {
+      const programId = accountKeys.get(instruction.programIdIndex);
+      if (!programId) {
+        throw new Error(`Invalid program ID index in serialized transaction: ${instruction.programIdIndex}`);
+      }
+      return programId.toBase58();
+    });
+  }
+  return transaction.instructions.map((instruction) => instruction.programId.toBase58());
+}
+
+function validateStendarInstructionShapes(
+  transaction: DecodedTransaction,
+  stendarProgramId: string,
+  accountKeys: ResolvedAccountKeys
+): void {
+  if (transaction instanceof VersionedTransaction) {
+    for (const instruction of transaction.message.compiledInstructions) {
+      const programId = accountKeys.get(instruction.programIdIndex)?.toBase58();
+      if (programId === stendarProgramId && instruction.data.length < 8) {
+        throw new Error('Invalid Stendar instruction payload: discriminator is missing');
+      }
+    }
+    return;
+  }
+  for (const instruction of transaction.instructions) {
+    if (instruction.programId.toBase58() === stendarProgramId && instruction.data.length < 8) {
+      throw new Error('Invalid Stendar instruction payload: discriminator is missing');
+    }
+  }
+}
+
+export interface DecodeSerializedTransactionOptions {
+  validateProgramIds?: boolean;
+  allowedProgramIds?: ReadonlyArray<string | PublicKey>;
+  addressLookupTableAccounts?: readonly AddressLookupTableAccount[];
+}
+
+export function decodeSerializedTransaction(
+  transactionBase64: string,
+  options?: DecodeSerializedTransactionOptions
+): DecodedTransaction {
+  const rawBytes = Buffer.from(transactionBase64, 'base64');
+  const decoded = (() => {
+    try {
+      return VersionedTransaction.deserialize(rawBytes);
+    } catch {
+      return Transaction.from(rawBytes);
+    }
+  })();
+  const shouldValidateProgramIds = options?.validateProgramIds ?? true;
+  if (shouldValidateProgramIds) {
+    const allowedProgramIds = options?.allowedProgramIds
+      ? new Set(options.allowedProgramIds.map((programId) => toProgramIdString(programId)))
+      : defaultAllowedProgramIds();
+    const stendarProgramId = resolveStendarProgramIdForValidation();
+    const accountKeys = resolveAccountKeys(decoded, options);
+    validateStendarInstructionShapes(decoded, stendarProgramId, accountKeys);
+    for (const programId of extractProgramIds(decoded, accountKeys)) {
+      if (!allowedProgramIds.has(programId)) {
+        throw new Error(`Unexpected program ID in serialized transaction: ${programId}`);
+      }
+    }
+  }
+
+  return decoded;
+}
+
+function isKeypair(signer: AnchorWalletLike | Keypair): signer is Keypair {
+  return signer instanceof Keypair;
+}
+
+async function signDecodedTransaction(
+  transaction: DecodedTransaction,
+  signer: AnchorWalletLike | Keypair
+): Promise<DecodedTransaction> {
+  if (isKeypair(signer)) {
+    if (transaction instanceof VersionedTransaction) {
+      transaction.sign([signer]);
+      return transaction;
+    }
+    transaction.partialSign(signer);
+    return transaction;
+  }
+
+  if (!signer.signTransaction) {
+    throw new Error('Wallet signer does not implement signTransaction');
+  }
+  return signer.signTransaction(transaction);
+}
+
+export async function signSerializedTransaction(
+  transactionBase64: string,
+  signer: AnchorWalletLike | Keypair
+): Promise<DecodedTransaction> {
+  const decoded = decodeSerializedTransaction(transactionBase64);
+  return signDecodedTransaction(decoded, signer);
+}
+
+export async function sendSignedTransaction(
+  connection: Connection,
+  transaction: DecodedTransaction,
+  sendOptions?: SendOptions
+): Promise<TransactionSignature> {
+  const signature = await connection.sendRawTransaction(transaction.serialize(), sendOptions);
+  return signature;
+}
+
+function extractRecentBlockhash(transaction: DecodedTransaction): string | null {
+  if (transaction instanceof VersionedTransaction) {
+    return transaction.message.recentBlockhash || null;
+  }
+
+  return transaction.recentBlockhash || null;
+}
+
+export async function confirmTransactionSignature(
+  connection: Connection,
+  signature: TransactionSignature,
+  commitment: Commitment = 'confirmed',
+  options?: {
+    maxRetries?: number;
+    retryBackoffMs?: number;
+    blockhash?: string;
+    lastValidBlockHeight?: number;
+  }
+): Promise<void> {
+  const maxRetries = Math.max(0, options?.maxRetries ?? 3);
+  const retryBackoffMs = Math.max(1, options?.retryBackoffMs ?? 250);
+  const strategy = options?.blockhash && options.lastValidBlockHeight !== undefined
+    ? {
+      blockhash: options.blockhash,
+      lastValidBlockHeight: options.lastValidBlockHeight,
+    }
+    : null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const confirmation = strategy
+        ? await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: strategy.blockhash,
+            lastValidBlockHeight: strategy.lastValidBlockHeight,
+          },
+          commitment
+        )
+        : await connection.confirmTransaction(signature, commitment);
+      if (confirmation.value.err) {
+        throw new Error(`Transaction ${signature} failed: ${JSON.stringify(confirmation.value.err)}`);
+      }
+      return;
+    } catch (error) {
+      if (attempt >= maxRetries) {
+        throw error;
+      }
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, retryBackoffMs * (2 ** attempt));
+      });
+    }
+  }
+}
+
+export interface SignAndSendTransactionParams {
+  connection: Connection;
+  unsignedTransactionBase64: string;
+  signer: AnchorWalletLike | Keypair;
+  sendOptions?: SendOptions;
+  commitment?: Commitment;
+  confirmMaxRetries?: number;
+  confirmRetryBackoffMs?: number;
+  lastValidBlockHeight?: number;
+}
+
+export async function signAndSendTransaction({
+  connection,
+  unsignedTransactionBase64,
+  signer,
+  sendOptions,
+  commitment = 'confirmed',
+  confirmMaxRetries = 3,
+  confirmRetryBackoffMs = 250,
+  lastValidBlockHeight,
+}: SignAndSendTransactionParams): Promise<TransactionSignature> {
+  const signedTransaction = await signSerializedTransaction(unsignedTransactionBase64, signer);
+  const signature = await sendSignedTransaction(connection, signedTransaction, sendOptions);
+
+  const confirmOptions: {
+    maxRetries?: number;
+    retryBackoffMs?: number;
+    blockhash?: string;
+    lastValidBlockHeight?: number;
+  } = {
+    maxRetries: confirmMaxRetries,
+    retryBackoffMs: confirmRetryBackoffMs,
+  };
+
+  const recentBlockhash = extractRecentBlockhash(signedTransaction);
+  if (recentBlockhash && lastValidBlockHeight !== undefined) {
+    confirmOptions.blockhash = recentBlockhash;
+    confirmOptions.lastValidBlockHeight = lastValidBlockHeight;
+  }
+
+  await confirmTransactionSignature(connection, signature, commitment, confirmOptions);
+  return signature;
+}

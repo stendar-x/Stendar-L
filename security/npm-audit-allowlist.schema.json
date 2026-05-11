@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stendar.com/schemas/npm-audit-allowlist.schema.json",
+  "title": "Stendar npm audit allowlist",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "updatedAt",
+    "rationale",
+    "projects"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "projects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "sdk"
+      ],
+      "properties": {
+        "root": {
+          "$ref": "#/$defs/projectAllowlist"
+        },
+        "sdk": {
+          "$ref": "#/$defs/projectAllowlist"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "projectAllowlist": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/allowlistEntry"
+      }
+    },
+    "allowlistEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package",
+        "severity",
+        "reason",
+        "owner",
+        "expiresAt"
+      ],
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "introducedAt"
+              ]
+            },
+            {
+              "required": [
+                "updatedAt"
+              ]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "required": [
+                "advisory"
+              ]
+            },
+            {
+              "required": [
+                "source"
+              ]
+            },
+            {
+              "required": [
+                "advisories"
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "package": {
+          "type": "string",
+          "minLength": 1
+        },
+        "advisory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "advisories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "introducedAt": {
+          "type": "string",
+          "format": "date"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}

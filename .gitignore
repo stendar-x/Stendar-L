@@ -1,0 +1,26 @@
+.anchor
+target
+test-ledger
+node_modules
+dist
+dist-tests
+coverage
+*.log
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Local keys
+**/*wallet*.json
+**/*authority*.json
+**/*-keypair.json
+
+# Fuzz artifacts (generated dashboards, regression data, logs)
+.fuzz-artifacts/
+trident-tests/.fuzz-artifacts/
+
+# Cursor workspace state
+.cursor/

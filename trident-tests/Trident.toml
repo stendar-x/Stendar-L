@@ -1,0 +1,16 @@
+[fuzz]
+fuzzing_with_stats = true
+allow_duplicate_txs = false
+
+[fuzz.metrics]
+enabled = true
+dashboard = true
+json = false
+
+[fuzz.regression]
+enabled = true
+
+[[fuzz.programs]]
+address = "278CdXnmeUFSmNjwbmRQmHk87fP5XqGmtshk9Jwp8VdE"
+program = "../target/deploy/stendar.so"
+
